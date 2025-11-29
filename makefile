@@ -1,2 +1,5 @@
-run: 
-	@go run main.go
+run: build
+	@./bin/miniredis
+
+build:
+	@go build -o bin/miniredis .

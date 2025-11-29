@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"log/slog"
 	"net"
 )
@@ -14,8 +16,10 @@ type Config struct {
 }
 
 type Server struct {
-	cfg Config
-	ln  net.Listener
+	cfg       Config
+	peers     map[*Peer]bool
+	ln        net.Listener
+	addPeerCh chan *Peer
 }
 
 func NewServer(cfg Config) *Server {
@@ -23,7 +27,9 @@ func NewServer(cfg Config) *Server {
 		cfg.ListenAddr = defaultListenAddr
 	}
 	return &Server{
-		cfg: cfg,
+		cfg:       cfg,
+		peers:     make(map[*Peer]bool),
+		addPeerCh: make(chan *Peer),
 	}
 }
 
@@ -32,22 +38,41 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	go s.acceptLoop()
 	s.ln = ln
-	return nil
+	go s.loop()
+	return s.acceptLoop()
 }
 
-func (s *Server) acceptLoop() {
+func (s *Server) loop() {
 	for {
-		conn, err := s.ln.Accept()
-		if err != nil {
-			slog.Error("accept error: %v", err)
-			continue
+		select {
+		case peer := <-s.addPeerCh:
+			s.peers[peer] = true
+		default:
+			fmt.Println("default")
 		}
 	}
 }
 
+func (s *Server) acceptLoop() error {
+	for {
+		conn, err := s.ln.Accept()
+		if err != nil {
+			slog.Error("accept error: %v", "err", err)
+			continue
+		}
+		go s.handleConn(conn)
+	}
+}
+
+func (s *Server) handleConn(conn net.Conn) {
+	defer conn.Close()
+	peer := NewPeer(conn)
+	s.addPeerCh <- peer
+	go peer.reedLoop()
+}
+
 func main() {
 	s := NewServer(Config{})
-	s.Start()
+	log.Fatal(s.Start())
 }
