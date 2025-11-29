@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"log/slog"
+	"net"
+)
 
 var (
 	defaultListenAddr = ":6379"
@@ -29,6 +32,22 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
+	go s.acceptLoop()
 	s.ln = ln
 	return nil
+}
+
+func (s *Server) acceptLoop() {
+	for {
+		conn, err := s.ln.Accept()
+		if err != nil {
+			slog.Error("accept error: %v", err)
+			continue
+		}
+	}
+}
+
+func main() {
+	s := NewServer(Config{})
+	s.Start()
 }
