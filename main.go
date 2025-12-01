@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -25,6 +26,8 @@ type Server struct {
 	addPeerCh chan *Peer
 	quiteCh   chan struct{}
 	msgCh     chan []byte
+
+	kv *KV
 }
 
 func NewServer(cfg Config) *Server {
@@ -37,6 +40,7 @@ func NewServer(cfg Config) *Server {
 		addPeerCh: make(chan *Peer),
 		quiteCh:   make(chan struct{}),
 		msgCh:     make(chan []byte),
+		kv:        NewKV(),
 	}
 }
 
@@ -60,7 +64,7 @@ func (s *Server) handleRawMsg(rawMsg []byte) error {
 	}
 	switch v := cmd.(type) {
 	case SetCommand:
-		slog.Info("set command", "cmd", v.key, "val", v.val)
+		return s.kv.Set(v.key, v.val)
 	}
 	return nil
 }
@@ -104,16 +108,22 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func main() {
+	s := NewServer(Config{})
 	go func() {
-		s := NewServer(Config{})
 		log.Fatal(s.Start())
 	}()
 
 	time.Sleep(time.Second)
-	c := client.NewClient("127.0.0.1:5000")
-	if err := c.Set(context.Background(), "key1", "value1"); err != nil {
-		log.Fatal(err)
-	}
-	time.Sleep(time.Second)
 
+	for i := 0; i < 10; i++ {
+
+		c := client.NewClient("127.0.0.1:5000")
+		if err := c.Set(context.Background(), fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i)); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println(s.kv.data)
+
+	time.Sleep(time.Second)
 }
