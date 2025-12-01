@@ -1,10 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"log/slog"
 	"net"
+	"time"
+
+	"github.com/dipendra-mule/miniredis/client"
 )
 
 var (
@@ -51,7 +54,14 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleRawMsg(rawMsg []byte) error {
-	fmt.Println(string(rawMsg))
+	cmd, err := parseCommand(string(rawMsg))
+	if err != nil {
+		return err
+	}
+	switch v := cmd.(type) {
+	case SetCommand:
+		slog.Info("set command", "cmd", v.key, "val", v.val)
+	}
 	return nil
 }
 
@@ -94,6 +104,16 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func main() {
-	s := NewServer(Config{})
-	log.Fatal(s.Start())
+	go func() {
+		s := NewServer(Config{})
+		log.Fatal(s.Start())
+	}()
+
+	time.Sleep(time.Second)
+	c := client.NewClient("127.0.0.1:5000")
+	if err := c.Set(context.Background(), "key1", "value1"); err != nil {
+		log.Fatal(err)
+	}
+	time.Sleep(time.Second)
+
 }

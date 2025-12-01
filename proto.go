@@ -34,7 +34,7 @@ func parseCommand(raw string) (Command, error) {
 				if len(v.Array()) != 3 {
 					return nil, fmt.Errorf("SET needs 2 args")
 				}
-				return &SetCommand{
+				return SetCommand{
 					key: v.Array()[1].String(),
 					val: v.Array()[2].String(),
 				}, nil
@@ -42,6 +42,7 @@ func parseCommand(raw string) (Command, error) {
 				return nil, fmt.Errorf("unknown command: %s", v.Array()[0].String())
 			}
 		}
+		return nil, fmt.Errorf("command to be implemented... ")
 	}
 	return nil, fmt.Errorf("no command found")
 }
