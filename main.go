@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"log/slog"
@@ -114,6 +115,10 @@ func (s *Server) handleConn(conn net.Conn) {
 }
 
 func main() {
-	s := NewServer(Config{})
+	listenAdrr := flag.String("listenAddr", defaultListenAddr, "listen address of miniredis server")
+	flag.Parse()
+	s := NewServer(Config{
+		ListenAddr: *listenAdrr,
+	})
 	log.Fatal(s.Start())
 }
