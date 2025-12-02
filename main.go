@@ -1,14 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"log/slog"
 	"net"
-	"time"
-
-	"github.com/dipendra-mule/miniredis/client"
 )
 
 var (
@@ -20,7 +16,7 @@ type Config struct {
 }
 
 type Message struct {
-	data []byte
+	cmd  Command
 	peer *Peer
 }
 
@@ -63,11 +59,8 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleMsg(msg Message) error {
-	cmd, err := parseCommand(string(msg.data))
-	if err != nil {
-		return err
-	}
-	switch v := cmd.(type) {
+
+	switch v := msg.cmd.(type) {
 	case SetCommand:
 		return s.kv.Set(v.key, v.val)
 	case GetCommand:
@@ -122,29 +115,5 @@ func (s *Server) handleConn(conn net.Conn) {
 
 func main() {
 	s := NewServer(Config{})
-	go func() {
-		log.Fatal(s.Start())
-	}()
-
-	time.Sleep(time.Second) // wait for server to start
-
-	c, err := client.NewClient("127.0.0.1:5000")
-	if err != nil {
-		log.Fatal(err)
-	}
-	for i := 0; i < 10; i++ {
-		if err := c.Set(context.Background(), fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i)); err != nil {
-			log.Fatal(err)
-		}
-
-		val, err := c.Get(context.Background(), fmt.Sprintf("key%d", i))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(val)
-	}
-
-	// fmt.Println(s.kv.data)
-
-	// time.Sleep(time.Second)
+	log.Fatal(s.Start())
 }

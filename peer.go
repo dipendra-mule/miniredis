@@ -21,19 +21,13 @@ func NewPeer(conn net.Conn, msgCh chan Message) *Peer {
 }
 
 func (p *Peer) reedLoop() error {
-	buf := make([]byte, 1024)
-	// reader := bufio.NewReader(p.conn)
 	for {
-		n, err := p.conn.Read(buf)
+		cmd, err := p.parseCommad()
 		if err != nil {
 			return err
 		}
-		// fmt.Println(string(buf[:n]))
-		// fmt.Println(len(buf[:n]))
-		msgBuff := make([]byte, n)
-		copy(msgBuff, buf[:n])
 		p.msgCh <- Message{
-			data: msgBuff,
+			cmd:  cmd,
 			peer: p,
 		}
 	}

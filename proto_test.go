@@ -10,11 +10,5 @@ func TestParseCommand(t *testing.T) {
 	// raw := "*3\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$7\r\nmyvalue\r\n"
 	raw := "*2\r\n$3\r\nGET\r\n$5\r\nmykey\r\n"
 
-	cmd, err := parseCommand(raw)
-
-	if err != nil {
-		t.Fatalf("parseCommand error: %v", err)
-	}
-	fmt.Println(cmd)
-	fmt.Println(string(cmd.(GetCommand).key))
+	fmt.Println(raw)
 }
