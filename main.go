@@ -99,8 +99,8 @@ func (s *Server) acceptLoop() error {
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
 	peer := NewPeer(conn, s.msgCh)
-	s.addPeerCh <- peer
 	slog.Info("new peer connected", "peer", conn.RemoteAddr())
+	s.addPeerCh <- peer
 	if err := peer.reedLoop(); err != nil {
 		slog.Error("read error: %v", "err", err, "peer", conn.RemoteAddr())
 		return
@@ -115,9 +115,8 @@ func main() {
 
 	time.Sleep(time.Second)
 
+	c := client.NewClient("127.0.0.1:5000")
 	for i := 0; i < 10; i++ {
-
-		c := client.NewClient("127.0.0.1:5000")
 		if err := c.Set(context.Background(), fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i)); err != nil {
 			log.Fatal(err)
 		}
