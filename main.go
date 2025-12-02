@@ -75,7 +75,7 @@ func (s *Server) handleMsg(msg Message) error {
 		if !ok {
 			return fmt.Errorf("key not found")
 		}
-		_, err := msg.peer.Send(val)
+		_, err := msg.peer.Send(val) // write directly to peer
 		if err != nil {
 			slog.Error("peer send error: %v", "err", err)
 		}
@@ -126,13 +126,17 @@ func main() {
 		log.Fatal(s.Start())
 	}()
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second) // wait for server to start
 
-	c := client.NewClient("127.0.0.1:5000")
+	c, err := client.NewClient("127.0.0.1:5000")
+	if err != nil {
+		log.Fatal(err)
+	}
 	for i := 0; i < 10; i++ {
 		if err := c.Set(context.Background(), fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i)); err != nil {
 			log.Fatal(err)
 		}
+
 		val, err := c.Get(context.Background(), fmt.Sprintf("key%d", i))
 		if err != nil {
 			log.Fatal(err)
@@ -142,5 +146,5 @@ func main() {
 
 	// fmt.Println(s.kv.data)
 
-	time.Sleep(time.Second)
+	// time.Sleep(time.Second)
 }
