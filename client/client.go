@@ -3,8 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"io"
-	"log"
 	"net"
 
 	"github.com/tidwall/resp"
@@ -16,29 +14,20 @@ type Client struct {
 }
 
 func NewClient(adrr string) *Client {
-	conn, err := net.Dial("tcp", adrr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	return &Client{
 		addr: adrr,
-		conn: conn,
 	}
 }
 
 func (c *Client) Set(ctx context.Context, key, val string) error {
-	if c.conn == nil {
-
+	conn, err := net.Dial("tcp", c.addr)
+	if err != nil {
+		return err
 	}
 
 	buf := &bytes.Buffer{}
 	wr := resp.NewWriter(buf)
 	wr.WriteArray([]resp.Value{resp.StringValue("set"), resp.StringValue(key), resp.StringValue(val)})
-	_, err := c.conn.Write(buf.Bytes())
-	if err != nil {
-		return err
-	}
-	io.Copy(c.conn, buf)
-	return nil
+	_, err = conn.Write(buf.Bytes())
+	return err
 }
