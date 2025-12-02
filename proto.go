@@ -10,11 +10,20 @@ import (
 	"github.com/tidwall/resp"
 )
 
+const (
+	CommandSet = "SET"
+	CommandGet = "GET"
+)
+
 type Command interface {
 }
 
 type SetCommand struct {
 	key, val []byte
+}
+
+type GetCommand struct {
+	key []byte
 }
 
 func parseCommand(raw string) (Command, error) {
@@ -30,7 +39,14 @@ func parseCommand(raw string) (Command, error) {
 		}
 		if v.Type() == resp.Array {
 			switch v.Array()[0].String() {
-			case "set":
+			case CommandGet:
+				if len(v.Array()) != 2 {
+					return nil, fmt.Errorf("GET needs 1 args")
+				}
+				return GetCommand{
+					key: v.Array()[1].Bytes(),
+				}, nil
+			case CommandSet:
 				if len(v.Array()) != 3 {
 					return nil, fmt.Errorf("SET needs 2 args")
 				}

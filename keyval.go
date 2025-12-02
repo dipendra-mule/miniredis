@@ -20,7 +20,7 @@ func (kv *KV) Set(key, val []byte) error {
 	return nil
 }
 
-func (kv *KV) Get(key string) ([]byte, bool) {
+func (kv *KV) Get(key []byte) ([]byte, bool) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
 	val, ok := kv.data[string(key)]

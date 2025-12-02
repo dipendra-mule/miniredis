@@ -6,10 +6,14 @@ import (
 
 type Peer struct {
 	conn  net.Conn
-	msgCh chan []byte
+	msgCh chan Message
 }
 
-func NewPeer(conn net.Conn, msgCh chan []byte) *Peer {
+func (p *Peer) Send(msg []byte) (int, error) {
+	return p.conn.Write(msg)
+}
+
+func NewPeer(conn net.Conn, msgCh chan Message) *Peer {
 	return &Peer{
 		conn:  conn,
 		msgCh: msgCh,
@@ -28,6 +32,9 @@ func (p *Peer) reedLoop() error {
 		// fmt.Println(len(buf[:n]))
 		msgBuff := make([]byte, n)
 		copy(msgBuff, buf[:n])
-		p.msgCh <- msgBuff
+		p.msgCh <- Message{
+			data: msgBuff,
+			peer: p,
+		}
 	}
 }
