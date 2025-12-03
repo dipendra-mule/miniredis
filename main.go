@@ -6,11 +6,11 @@ import (
 	"log"
 	"log/slog"
 	"net"
+
+	"github.com/tidwall/resp"
 )
 
-var (
-	defaultListenAddr = ":5000"
-)
+const defaultListenAddr = ":5000"
 
 type Config struct {
 	ListenAddr string
@@ -28,12 +28,13 @@ type Server struct {
 	addPeerCh chan *Peer
 	quiteCh   chan struct{}
 	msgCh     chan Message
+	delPeerCh chan *Peer
 
 	kv *KV
 }
 
 func NewServer(cfg Config) *Server {
-	if cfg.ListenAddr == "" {
+	if len(cfg.ListenAddr) == 0 {
 		cfg.ListenAddr = defaultListenAddr
 	}
 	return &Server{
@@ -42,6 +43,7 @@ func NewServer(cfg Config) *Server {
 		addPeerCh: make(chan *Peer),
 		quiteCh:   make(chan struct{}),
 		msgCh:     make(chan Message),
+		delPeerCh: make(chan *Peer),
 		kv:        NewKV(),
 	}
 }
@@ -60,18 +62,39 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) handleMsg(msg Message) error {
-
 	switch v := msg.cmd.(type) {
+	case ClientCommand:
+		if err := resp.
+			NewWriter(msg.peer.conn).
+			WriteString("OK"); err != nil {
+			return err
+		}
 	case SetCommand:
-		return s.kv.Set(v.key, v.val)
+		if err := s.kv.Set(v.key, v.val); err != nil {
+			return err
+		}
+		if err := resp.
+			NewWriter(msg.peer.conn).
+			WriteString("OK"); err != nil {
+			return err
+		}
 	case GetCommand:
 		val, ok := s.kv.Get(v.key)
 		if !ok {
 			return fmt.Errorf("key not found")
 		}
-		_, err := msg.peer.Send(val) // write directly to peer
+		if err := resp.
+			NewWriter(msg.peer.conn).
+			WriteString(string(val)); err != nil {
+			return err
+		}
+	case HelloCommand:
+		spec := map[string]string{
+			"server": "redis",
+		}
+		_, err := msg.peer.Send(respWriteMap(spec))
 		if err != nil {
-			slog.Error("peer send error: %v", "err", err)
+			return fmt.Errorf("peer send error: %s", err)
 		}
 	}
 	return nil
@@ -80,16 +103,20 @@ func (s *Server) handleMsg(msg Message) error {
 func (s *Server) loop() {
 	for {
 		select {
-		case rawMsg := <-s.msgCh:
-			if err := s.handleMsg(rawMsg); err != nil {
-				slog.Error("handle raw msg error: %v", "err", err)
-				continue
+		case msg := <-s.msgCh:
+			if err := s.handleMsg(msg); err != nil {
+				slog.Error("handle msg error: %v", "err", err)
 			}
 		case <-s.quiteCh:
 			return
 		case peer := <-s.addPeerCh:
+			slog.Info("peer connected", "peer", peer.conn.RemoteAddr())
 			s.peers[peer] = true
+		case peer := <-s.delPeerCh:
+			slog.Info("peer disconnected", "peer", peer.conn.RemoteAddr())
+			delete(s.peers, peer)
 		}
+
 	}
 }
 
@@ -106,9 +133,9 @@ func (s *Server) acceptLoop() error {
 
 func (s *Server) handleConn(conn net.Conn) {
 	defer conn.Close()
-	peer := NewPeer(conn, s.msgCh)
+	peer := NewPeer(conn, s.msgCh, s.delPeerCh)
 	s.addPeerCh <- peer
-	if err := peer.reedLoop(); err != nil {
+	if err := peer.readLoop(); err != nil {
 		slog.Error("read error: %v", "err", err, "peer", conn.RemoteAddr())
 		return
 	}

@@ -8,13 +8,13 @@ import (
 	"testing"
 )
 
-func TestNewClient(t *testing.T) {
+func TestMultipleClients(t *testing.T) {
 	nClients := 10
 	wg := sync.WaitGroup{}
 	wg.Add(nClients)
 	for i := 0; i < nClients; i++ {
 		go func(i int) {
-			c, err := NewClient("127.0.0.1:5001")
+			c, err := NewClient("127.0.0.1:5000")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -35,8 +35,8 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
-func TestClient2(t *testing.T) {
-	c, err := NewClient("127.0.0.1:5001")
+func TestSingleClient(t *testing.T) {
+	c, err := NewClient("127.0.0.1:5000")
 	if err != nil {
 		log.Fatal(err)
 	}
