@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+var DB = map[string]string{}
+
 func main() {
 	l, err := net.Listen("tcp", ":6379")
 	fmt.Println("server is started on port 6379")
@@ -25,12 +27,8 @@ func main() {
 	defer conn.Close()
 
 	for {
-		r := Resp{
-			sign: Array,
-		}
+		r := Resp{sign: Array}
 		r.parseRespArr(conn)
-		fmt.Println(r.arr)
-		// fmt.Println(r.arr)
-		conn.Write([]byte("+OK\r\n"))
+		handle(conn, &r)
 	}
 }

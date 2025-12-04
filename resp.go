@@ -14,6 +14,7 @@ const (
 	Integer      Sign = ":"
 	BulkString   Sign = "$"
 	Array        Sign = "*"
+	Null         Sign = ""
 )
 
 type Resp struct {
@@ -22,6 +23,7 @@ type Resp struct {
 	bulk string
 	str  string
 	arr  []Resp
+	err  string
 	// null    bool
 }
 
