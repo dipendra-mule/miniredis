@@ -1,5 +1,5 @@
 run: build
-	@./bin/miniredis --listenAddr :5001
+	@./bin/miniredis --listenAddr :6379
 
 build:
 	@go build -o bin/miniredis .
