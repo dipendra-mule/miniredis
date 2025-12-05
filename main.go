@@ -19,6 +19,7 @@ func main() {
 	}
 
 	if len(conf.rdb) > 0 {
+		SyncRDB(conf)
 		InitRDBTracker(conf)
 	}
 

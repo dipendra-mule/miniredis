@@ -64,3 +64,20 @@ func SaveRDB(conf *Config) {
 	}
 	log.Println("saved RDB file")
 }
+
+func SyncRDB(conf *Config) {
+	fp := path.Join(conf.dir, conf.rdbFn)
+	f, err := os.OpenFile(fp, os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		log.Println("error opening rdb file: ", err)
+		return
+	}
+	defer f.Close()
+
+	err = gob.NewDecoder(f).Decode(&DB.store)
+	if err != nil {
+		log.Println("error decoding rdb file: ", err)
+		return
+	}
+
+}
