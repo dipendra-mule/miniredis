@@ -40,8 +40,7 @@ func (w *Writer) Deserialize(r *Resp) (reply string) {
 }
 
 func (w *Writer) Write(r *Resp) {
-	var reply string
-
+	reply := w.Deserialize(r)
 	w.writer.Write([]byte(reply))
 	w.writer.(*bufio.Writer).Flush()
 }

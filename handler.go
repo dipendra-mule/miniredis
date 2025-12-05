@@ -12,6 +12,8 @@ var Handlers = map[string]Handler{
 	"SET":     set,
 	"GET":     get,
 	"COMMAND": command,
+	"set":     set,
+	"get":     get,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
