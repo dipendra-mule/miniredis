@@ -27,6 +27,7 @@ func handle(conn net.Conn, r *Resp, state *AppState) {
 	reply := handler(r, state)
 	w := NewWrite(conn)
 	w.Write(reply)
+	w.Flush()
 }
 
 func command(r *Resp, state *AppState) *Resp {
@@ -52,6 +53,10 @@ func set(r *Resp, state *AppState) *Resp {
 	if state.conf.aofEnabled {
 		log.Println("saving aof file")
 		state.aof.w.Write(r)
+
+		if state.conf.aofFSync == Always {
+			state.aof.w.Flush()
+		}
 	}
 	DB.mu.Unlock()
 
