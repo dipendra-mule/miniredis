@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	readConf("./redis.conf")
+	log.Println("reading config file")
+	conf := readConf("./redis.conf")
+
+	state := NewAppState(conf)
 
 	l, err := net.Listen("tcp", ":6379")
 	fmt.Println("server is started on port 6379")
@@ -29,6 +32,23 @@ func main() {
 	for {
 		r := Resp{sign: Array}
 		r.parseRespArr(conn)
-		handle(conn, &r)
+		handle(conn, &r, state)
 	}
+}
+
+type AppState struct {
+	conf *Config
+	aof  *Aof
+}
+
+func NewAppState(conf *Config) *AppState {
+	state := AppState{
+		conf: conf,
+	}
+
+	if conf.aofEnabled {
+		state.aof = NewAof(conf)
+	}
+
+	return &state
 }

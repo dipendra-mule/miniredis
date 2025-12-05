@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
-type Handler func(*Resp) *Resp
+type Handler func(*Resp, *AppState) *Resp
 
 var Handlers = map[string]Handler{
 	"SET":     set,
@@ -13,7 +14,7 @@ var Handlers = map[string]Handler{
 	"COMMAND": command,
 }
 
-func handle(conn net.Conn, r *Resp) {
+func handle(conn net.Conn, r *Resp, state *AppState) {
 	cmd := r.arr[0].bulk
 	handler, ok := Handlers[cmd]
 	if !ok {
@@ -21,17 +22,19 @@ func handle(conn net.Conn, r *Resp) {
 		return
 	}
 
-	reply := handler(r)
+	reply := handler(r, state)
 	w := NewWrite(conn)
 	w.Write(reply)
 }
-func command(r *Resp) *Resp {
+
+func command(r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: SimpleString,
 		str:  "OK",
 	}
 }
-func set(r *Resp) *Resp {
+
+func set(r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	if len(args) != 2 {
 		return &Resp{
@@ -42,10 +45,13 @@ func set(r *Resp) *Resp {
 
 	k := args[0].bulk
 	v := args[1].bulk
-	err := DB.Set(k, v)
-	if err != nil {
-		fmt.Println("failed to set kv to db", "err:", err)
+	DB.mu.Lock()
+	DB.store[k] = v
+	if state.conf.aofEnabled {
+		log.Println("saving aof file")
+		state.aof.w.Write(r)
 	}
+	DB.mu.Unlock()
 
 	return &Resp{
 		sign: SimpleString,
@@ -53,7 +59,7 @@ func set(r *Resp) *Resp {
 	}
 }
 
-func get(r *Resp) *Resp {
+func get(r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	if len(args) != 1 {
 		return &Resp{

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 )
 
 type Writer struct {
@@ -16,9 +17,13 @@ func NewWrite(w io.Writer) *Writer {
 	}
 }
 
-func (w *Writer) Write(r *Resp) {
-	var reply string
+func (w *Writer) Deserialize(r *Resp) (reply string) {
 	switch r.sign {
+	case Array:
+		reply = fmt.Sprintf("%s%d\r\n", r.sign, len(r.arr))
+		for _, sub := range r.arr {
+			reply += w.Deserialize(&sub)
+		}
 	case SimpleString:
 		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.str)
 	case BulkString:
@@ -27,7 +32,15 @@ func (w *Writer) Write(r *Resp) {
 		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.err)
 	case Null:
 		reply = "$-1\r\n"
+	default:
+		log.Println("invalid typ received")
+		return reply
 	}
+	return reply
+}
+
+func (w *Writer) Write(r *Resp) {
+	var reply string
 
 	w.writer.Write([]byte(reply))
 	w.writer.(*bufio.Writer).Flush()

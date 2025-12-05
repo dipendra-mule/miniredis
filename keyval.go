@@ -14,7 +14,9 @@ func NewKV() *KV {
 	}
 }
 
-func (kv *KV) Set(key, val string) error {
+var DB = NewKV()
+
+func (kv *KV) Set(key, val string, state *AppState) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	kv.store[key] = val
@@ -27,5 +29,3 @@ func (kv *KV) Get(key string) (string, bool) {
 	val, ok := kv.store[key]
 	return val, ok
 }
-
-var DB = NewKV()
