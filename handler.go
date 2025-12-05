@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"net"
 )
 
@@ -24,8 +22,7 @@ func handle(conn net.Conn, r *Resp) {
 	}
 
 	reply := handler(r)
-	fmt.Println("reply", reply)
-	w := NewWriter(conn)
+	w := NewWrite(conn)
 	w.Write(reply)
 }
 func command(r *Resp) *Resp {
@@ -43,8 +40,12 @@ func set(r *Resp) *Resp {
 		}
 	}
 
-	DB[args[0].bulk] = args[1].bulk
-	fmt.Println("set req for", args[0].bulk, args[1].bulk)
+	k := args[0].bulk
+	v := args[1].bulk
+	err := DB.Set(k, v)
+	if err != nil {
+		fmt.Println("failed to set kv to db", "err:", err)
+	}
 
 	return &Resp{
 		sign: SimpleString,
@@ -61,47 +62,15 @@ func get(r *Resp) *Resp {
 		}
 	}
 
-	name := args[0].bulk
-	val, ok := DB[name]
+	val, ok := DB.Get(args[0].bulk)
+
 	if !ok {
 		return &Resp{
 			sign: Null,
 		}
 	}
-	fmt.Println("get req for", args[0].bulk)
 	return &Resp{
 		sign: BulkString,
 		bulk: val,
 	}
-}
-
-type Writer struct {
-	writer io.Writer
-}
-
-func NewWriter(w io.Writer) *Writer {
-	return &Writer{
-		writer: bufio.NewWriter(w),
-	}
-}
-
-func (w *Writer) Write(r *Resp) {
-	var reply string
-	switch r.sign {
-	case SimpleString:
-		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.str)
-		fmt.Println("simple string")
-	case BulkString:
-		reply = fmt.Sprintf("%s%d\r\n%s\r\n", r.sign, len(r.bulk), r.bulk)
-		fmt.Println("bulk string")
-	case Error:
-		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.err)
-		fmt.Println("error string")
-	case Null:
-		reply = "$-1\r\n"
-	}
-
-	w.writer.Write([]byte(reply))
-	fmt.Println("--------", reply)
-	w.writer.(*bufio.Writer).Flush()
 }

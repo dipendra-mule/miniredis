@@ -7,9 +7,9 @@ import (
 	"os"
 )
 
-var DB = map[string]string{}
-
 func main() {
+	readConf("./redis.conf")
+
 	l, err := net.Listen("tcp", ":6379")
 	fmt.Println("server is started on port 6379")
 	if err != nil {

@@ -32,6 +32,7 @@ type Resp struct {
 func (r *Resp) parseRespArr(reader io.Reader) {
 	buf := make([]byte, 4)
 	reader.Read(buf)
+	fmt.Println(string(buf))
 
 	arrLen, err := strconv.Atoi(string(buf[1])) // 3
 	if err != nil {

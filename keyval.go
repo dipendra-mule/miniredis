@@ -3,26 +3,29 @@ package main
 import "sync"
 
 type KV struct {
-	mu   sync.RWMutex
-	data map[string][]byte
+	mu    sync.RWMutex
+	store map[string]string
 }
 
 func NewKV() *KV {
 	return &KV{
-		data: map[string][]byte{},
+		store: map[string]string{},
+		mu:    sync.RWMutex{},
 	}
 }
 
-func (kv *KV) Set(key, val []byte) error {
+func (kv *KV) Set(key, val string) error {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
-	kv.data[string(key)] = []byte(val)
+	kv.store[key] = val
 	return nil
 }
 
-func (kv *KV) Get(key []byte) ([]byte, bool) {
+func (kv *KV) Get(key string) (string, bool) {
 	kv.mu.RLock()
 	defer kv.mu.RUnlock()
-	val, ok := kv.data[string(key)]
+	val, ok := kv.store[key]
 	return val, ok
 }
+
+var DB = NewKV()
