@@ -18,6 +18,10 @@ func main() {
 		state.aof.Sync()
 	}
 
+	if len(conf.rdb) > 0 {
+		InitRDBTracker(conf)
+	}
+
 	l, err := net.Listen("tcp", ":6379")
 	fmt.Println("server is started on port 6379")
 	if err != nil {

@@ -58,6 +58,10 @@ func set(r *Resp, state *AppState) *Resp {
 			state.aof.w.Flush()
 		}
 	}
+
+	if len(state.conf.rdb) >= 0 {
+		IncrRDBTracker()
+	}
 	DB.mu.Unlock()
 
 	return &Resp{
