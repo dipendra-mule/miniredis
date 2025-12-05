@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path"
 )
@@ -25,4 +27,21 @@ func NewAof(conf *Config) *Aof {
 	aof.f = f
 
 	return &aof
+}
+
+func (aof *Aof) Sync() {
+	for {
+		r := Resp{}
+		err := r.parseRespArr(aof.f)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Println("unexpected err while reading AOF records")
+			break
+		}
+
+		blankState := NewAppState(&Config{})
+		set(&r, blankState)
+	}
 }

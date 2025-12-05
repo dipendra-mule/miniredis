@@ -39,7 +39,7 @@ func readConf(fn string) *Config {
 
 	f, err := os.Open(fn)
 	if err != nil {
-		fmt.Printf("Cannot read %s - using default config\n", fn)
+		fmt.Printf("cannot read %s - using default config\n", fn)
 		return conf
 	}
 	defer f.Close()
@@ -84,6 +84,7 @@ func parseLine(l string, conf *Config) {
 			KeysChanged: keysChanged,
 		}
 		conf.rdb = append(conf.rdb, ss)
+
 	case "dbfilename":
 		conf.rdbFn = args[1]
 	case "appendfilename":
