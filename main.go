@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -24,26 +25,41 @@ func main() {
 	}
 
 	l, err := net.Listen("tcp", ":6379")
-	fmt.Println("server is started on port 6379")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer l.Close()
+	log.Println("listening on :6379")
 
-	conn, err := l.Accept()
-	fmt.Println("someone got connected", conn.RemoteAddr())
+	var wg sync.WaitGroup
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		fmt.Println("connection accepeted: ", conn.RemoteAddr())
 
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		wg.Add(1)
+		go func() {
+			handleConn(conn, state)
+			wg.Done()
+		}()
 	}
-	defer conn.Close()
+	wg.Wait()
+}
 
+func handleConn(conn net.Conn, state *AppState) {
+	log.Println("accepeted new connection: ", conn.LocalAddr().String())
 	for {
 		r := Resp{sign: Array}
-		r.parseRespArr(conn)
+		if err := r.parseRespArr(conn); err != nil {
+			log.Println(err)
+			break
+		}
 		handle(conn, &r, state)
 	}
+	log.Println("connection closed: ", conn.LocalAddr().String())
 }
 
 type AppState struct {
