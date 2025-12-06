@@ -13,6 +13,8 @@ var Handlers = map[string]Handler{
 	"GET":     get,
 	"DEL":     del,
 	"COMMAND": command,
+	"EXISTS":  exists,
+	"exists":  exists,
 	"set":     set,
 	"get":     get,
 	"del":     del,
@@ -108,6 +110,24 @@ func del(r *Resp, state *AppState) *Resp {
 	}
 	DB.mu.Unlock()
 
+	return &Resp{
+		sign: Integer,
+		num:  n,
+	}
+}
+
+func exists(r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	var n int
+
+	DB.mu.Lock()
+	for _, arg := range args {
+		_, ok := DB.store[arg.bulk]
+		if ok {
+			n++
+		}
+	}
+	DB.mu.Unlock()
 	return &Resp{
 		sign: Integer,
 		num:  n,
