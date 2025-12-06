@@ -19,7 +19,7 @@ const (
 
 type Resp struct {
 	sign Sign
-	// integer int
+	num  int
 	bulk string
 	str  string
 	arr  []Resp

@@ -11,9 +11,11 @@ type Handler func(*Resp, *AppState) *Resp
 var Handlers = map[string]Handler{
 	"SET":     set,
 	"GET":     get,
+	"DEL":     del,
 	"COMMAND": command,
 	"set":     set,
 	"get":     get,
+	"del":     del,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
@@ -89,5 +91,25 @@ func get(r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: BulkString,
 		bulk: val,
+	}
+}
+
+func del(r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	var n int
+
+	DB.mu.Lock()
+	for _, arg := range args {
+		_, ok := DB.store[arg.bulk]
+		delete(DB.store, arg.bulk)
+		if ok {
+			n++
+		}
+	}
+	DB.mu.Unlock()
+
+	return &Resp{
+		sign: Integer,
+		num:  n,
 	}
 }

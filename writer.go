@@ -28,6 +28,8 @@ func (w *Writer) Deserialize(r *Resp) (reply string) {
 		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.str)
 	case BulkString:
 		reply = fmt.Sprintf("%s%d\r\n%s\r\n", r.sign, len(r.bulk), r.bulk)
+	case Integer:
+		reply = fmt.Sprintf("%s%d\r\n", r.sign, r.num)
 	case Error:
 		reply = fmt.Sprintf("%s%s\r\n", r.sign, r.err)
 	case Null:
