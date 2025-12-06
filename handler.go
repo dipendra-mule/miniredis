@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"path/filepath"
 )
 
 type Handler func(*Resp, *AppState) *Resp
@@ -14,10 +15,12 @@ var Handlers = map[string]Handler{
 	"DEL":     del,
 	"COMMAND": command,
 	"EXISTS":  exists,
-	"exists":  exists,
+	"KEYS":    keys,
 	"set":     set,
 	"get":     get,
 	"del":     del,
+	"exists":  exists,
+	"keys":    keys,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
@@ -132,4 +135,38 @@ func exists(r *Resp, state *AppState) *Resp {
 		sign: Integer,
 		num:  n,
 	}
+}
+
+func keys(r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	if len(args) > 1 {
+		return &Resp{
+			sign: Error,
+			err:  "ERR invalid args for 'KEYS'",
+		}
+	}
+	pattern := args[0].bulk
+
+	DB.mu.RLock()
+	var matches []string
+	for key := range DB.store {
+		matched, err := filepath.Match(pattern, key)
+		if err != nil {
+			log.Printf("error matching keys: (pattern: %s, key: %s)- %s", pattern, key, err)
+			continue
+		}
+		if matched {
+			matches = append(matches, key)
+		}
+	}
+	DB.mu.RUnlock()
+
+	reply := &Resp{
+		sign: Array,
+	}
+
+	for _, m := range matches {
+		reply.arr = append(reply.arr, Resp{sign: BulkString, bulk: m})
+	}
+	return reply
 }
