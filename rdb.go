@@ -51,7 +51,7 @@ func IncrRDBTracker() {
 
 func SaveRDB(conf *Config) {
 	fp := path.Join(conf.dir, conf.rdbFn)
-	f, err := os.OpenFile(fp, os.O_CREATE|os.O_WRONLY, 0644) // owner (read-write), everyone (read)
+	f, err := os.OpenFile(fp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644) // owner (read-write), everyone (read)
 	if err != nil {
 		log.Println("error opening rdb file: ", err)
 	}
@@ -70,9 +70,10 @@ func SaveRDB(conf *Config) {
 
 func SyncRDB(conf *Config) {
 	fp := path.Join(conf.dir, conf.rdbFn)
-	f, err := os.OpenFile(fp, os.O_CREATE|os.O_RDONLY, 0644)
+	f, err := os.Open(fp)
 	if err != nil {
 		log.Println("error opening rdb file: ", err)
+		f.Close()
 		return
 	}
 	defer f.Close()

@@ -16,11 +16,13 @@ var Handlers = map[string]Handler{
 	"COMMAND": command,
 	"EXISTS":  exists,
 	"KEYS":    keys,
+	"SAVE":    save,
 	"set":     set,
 	"get":     get,
 	"del":     del,
 	"exists":  exists,
 	"keys":    keys,
+	"save":    save,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
@@ -169,4 +171,11 @@ func keys(r *Resp, state *AppState) *Resp {
 		reply.arr = append(reply.arr, Resp{sign: BulkString, bulk: m})
 	}
 	return reply
+}
+
+func save(r *Resp, state *AppState) *Resp {
+	SaveRDB(state.conf)
+	return &Resp{
+		sign: SimpleString, str: "OK",
+	}
 }
