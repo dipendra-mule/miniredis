@@ -106,8 +106,8 @@ func del(r *Resp, state *AppState) *Resp {
 	DB.mu.Lock()
 	for _, arg := range args {
 		_, ok := DB.store[arg.bulk]
-		delete(DB.store, arg.bulk)
 		if ok {
+			delete(DB.store, arg.bulk)
 			n++
 		}
 	}

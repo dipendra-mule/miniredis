@@ -57,7 +57,10 @@ func SaveRDB(conf *Config) {
 	}
 	defer f.Close()
 
+	DB.mu.RLock()
 	err = gob.NewEncoder(f).Encode(&DB.store)
+	DB.mu.RUnlock()
+
 	if err != nil {
 		log.Println("error saving rdb file: ", err)
 		return
