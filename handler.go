@@ -20,6 +20,7 @@ var Handlers = map[string]Handler{
 	"SAVE":    save,
 	"BGSAVE":  bgsave,
 	"DBSIZE":  dbsize,
+	"FLUSHDB": flushdb,
 	"set":     set,
 	"get":     get,
 	"del":     del,
@@ -29,6 +30,7 @@ var Handlers = map[string]Handler{
 	"bgsave":  bgsave,
 	"dbsize":  dbsize,
 	"size":    dbsize,
+	"flushdb": flushdb,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
@@ -230,5 +232,16 @@ func dbsize(r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: Integer,
 		num:  size,
+	}
+}
+
+func flushdb(r *Resp, state *AppState) *Resp {
+	DB.mu.Lock()
+	DB.store = map[string]string{}
+	DB.mu.Unlock()
+
+	return &Resp{
+		sign: SimpleString,
+		str:  "OK",
 	}
 }
