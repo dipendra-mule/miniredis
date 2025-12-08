@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"maps"
 	"net"
 	"path/filepath"
 )
@@ -17,12 +18,17 @@ var Handlers = map[string]Handler{
 	"EXISTS":  exists,
 	"KEYS":    keys,
 	"SAVE":    save,
+	"BGSAVE":  bgsave,
+	"DBSIZE":  dbsize,
 	"set":     set,
 	"get":     get,
 	"del":     del,
 	"exists":  exists,
 	"keys":    keys,
 	"save":    save,
+	"bgsave":  bgsave,
+	"dbsize":  dbsize,
+	"size":    dbsize,
 }
 
 func handle(conn net.Conn, r *Resp, state *AppState) {
@@ -113,6 +119,14 @@ func del(r *Resp, state *AppState) *Resp {
 			n++
 		}
 	}
+	// if state.conf.aofEnabled {
+	// 	log.Println("saving aof file")
+	// 	state.aof.w.Write(r)
+
+	// 	if state.conf.aofFSync == Always {
+	// 		state.aof.w.Flush()
+	// 	}
+	// }
 	DB.mu.Unlock()
 
 	return &Resp{
@@ -174,8 +188,47 @@ func keys(r *Resp, state *AppState) *Resp {
 }
 
 func save(r *Resp, state *AppState) *Resp {
-	SaveRDB(state.conf)
+	SaveRDB(state)
 	return &Resp{
 		sign: SimpleString, str: "OK",
+	}
+}
+
+func bgsave(r *Resp, state *AppState) *Resp {
+	if state.bgsaveRunning {
+		return &Resp{
+			sign: Error, err: "ERR background save is already running",
+		}
+	}
+
+	c := make(map[string]string, len(DB.store))
+	DB.mu.RLock()
+	maps.Copy(c, DB.store)
+	DB.mu.RUnlock()
+
+	state.bgsaveRunning = true
+	state.dbCopy = c
+	go func() {
+		defer func() {
+			state.bgsaveRunning = false
+			state.dbCopy = nil
+		}()
+		SaveRDB(state)
+	}()
+
+	return &Resp{
+		sign: SimpleString,
+		str:  "OK",
+	}
+}
+
+func dbsize(r *Resp, state *AppState) *Resp {
+	DB.mu.RLock()
+	size := len(DB.store)
+	DB.mu.RUnlock()
+
+	return &Resp{
+		sign: Integer,
+		num:  size,
 	}
 }

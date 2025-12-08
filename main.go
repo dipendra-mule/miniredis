@@ -21,7 +21,7 @@ func main() {
 
 	if len(conf.rdb) > 0 {
 		SyncRDB(conf)
-		InitRDBTracker(conf)
+		InitRDBTracker(state)
 	}
 
 	l, err := net.Listen("tcp", ":6379")
@@ -63,8 +63,10 @@ func handleConn(conn net.Conn, state *AppState) {
 }
 
 type AppState struct {
-	conf *Config
-	aof  *Aof
+	conf          *Config
+	aof           *Aof
+	bgsaveRunning bool
+	dbCopy        map[string]string
 }
 
 func NewAppState(conf *Config) *AppState {
