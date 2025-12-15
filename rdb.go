@@ -55,9 +55,10 @@ func IncrRDBTracker() {
 
 func SaveRDB(state *AppState) {
 	fp := path.Join(state.conf.dir, state.conf.rdbFn)
-	f, err := os.OpenFile(fp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644) // owner (read-write), everyone (read)
+	f, err := os.OpenFile(fp, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644) // owner (read-write), everyone (read)
 	if err != nil {
 		log.Println("error opening rdb file: ", err)
+		return
 	}
 	defer f.Close()
 
@@ -67,7 +68,7 @@ func SaveRDB(state *AppState) {
 		err = gob.NewEncoder(&buf).Encode(&state.dbCopy)
 	} else {
 		DB.mu.RLock()
-		err = gob.NewEncoder(f).Encode(&DB.store)
+		err = gob.NewEncoder(&buf).Encode(&DB.store)
 		DB.mu.RUnlock()
 	}
 
@@ -92,6 +93,10 @@ func SaveRDB(state *AppState) {
 		log.Println("error syncing rdb file: ", err)
 		return
 	}
+	if _, err := f.Seek(0, 0); err != nil {
+		log.Println("error seeking to start of file: ", err)
+		return
+	}
 
 	fsum, err := Hash(f)
 	if err != nil {
@@ -108,7 +113,7 @@ func SaveRDB(state *AppState) {
 
 func SyncRDB(conf *Config) {
 	fp := path.Join(conf.dir, conf.rdbFn)
-	f, err := os.Open(fp)
+	f, err := os.Open(fp) // owner (read-write), everyone (read)
 	if err != nil {
 		log.Println("error opening rdb file: ", err)
 		f.Close()
