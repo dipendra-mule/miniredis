@@ -4,6 +4,8 @@ import (
 	"log"
 	"maps"
 	"path/filepath"
+	"strconv"
+	"time"
 )
 
 type Handler func(*Client, *Resp, *AppState) *Resp
@@ -20,6 +22,8 @@ var Handlers = map[string]Handler{
 	"DBSIZE":  dbsize,
 	"FLUSHDB": flushdb,
 	"AUTH":    auth,
+	"EXPIRE":  expire,
+
 	"set":     set,
 	"get":     get,
 	"del":     del,
@@ -31,6 +35,7 @@ var Handlers = map[string]Handler{
 	"size":    dbsize,
 	"flushdb": flushdb,
 	"auth":    auth,
+	"expire":  expire,
 }
 var SafeCMDs = []string{
 	"AUTH",
@@ -290,5 +295,43 @@ func auth(c *Client, r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: SimpleString,
 		str:  "OK",
+	}
+}
+
+func expire(c *Client, r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	if len(args) != 2 {
+		return &Resp{
+			sign: Error,
+			err:  "ERR invalid args for 'EXPIRE'",
+		}
+	}
+	k := args[0].bulk
+	secs := args[1].bulk
+	// secs := args[1].num
+
+	expSecs, err := strconv.Atoi(secs)
+	if err != nil {
+		return &Resp{
+			sign: Error,
+			err:  "ERR invalid value for 'EXPIRE'",
+		}
+	}
+
+	DB.mu.Lock()
+	defer DB.mu.Unlock()
+
+	key, ok := DB.store[k]
+	if !ok {
+		return &Resp{
+			sign: Integer,
+			num:  0,
+		}
+	}
+	key.Exp = time.Now().Add(time.Duration(expSecs) * time.Second)
+
+	return &Resp{
+		sign: Integer,
+		num:  1,
 	}
 }
