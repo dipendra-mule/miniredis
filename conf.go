@@ -9,12 +9,14 @@ import (
 )
 
 type Config struct {
-	dir        string
-	rdb        []RDBSnapshot
-	rdbFn      string
-	aofEnabled bool
-	aofFn      string
-	aofFSync   FSyncMode
+	dir         string
+	rdb         []RDBSnapshot
+	rdbFn       string
+	aofEnabled  bool
+	aofFn       string
+	aofFSync    FSyncMode
+	requirepass bool
+	password    string
 }
 
 func NewConfig() *Config {
@@ -99,5 +101,8 @@ func parseLine(l string, conf *Config) {
 		}
 	case "appendfsync":
 		conf.aofFSync = FSyncMode(args[1])
+	case "requirepass":
+		conf.requirepass = true
+		conf.password = args[1]
 	}
 }

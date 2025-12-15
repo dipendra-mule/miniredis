@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"maps"
-	"net"
 	"path/filepath"
 )
 
-type Handler func(*Resp, *AppState) *Resp
+type Handler func(*Client, *Resp, *AppState) *Resp
 
 var Handlers = map[string]Handler{
 	"SET":     set,
@@ -21,6 +19,7 @@ var Handlers = map[string]Handler{
 	"BGSAVE":  bgsave,
 	"DBSIZE":  dbsize,
 	"FLUSHDB": flushdb,
+	"AUTH":    auth,
 	"set":     set,
 	"get":     get,
 	"del":     del,
@@ -31,30 +30,49 @@ var Handlers = map[string]Handler{
 	"dbsize":  dbsize,
 	"size":    dbsize,
 	"flushdb": flushdb,
+	"auth":    auth,
+}
+var SafeCMDs = []string{
+	"AUTH",
+	"auth",
+	"COMMAND",
 }
 
-func handle(conn net.Conn, r *Resp, state *AppState) {
+func handle(c *Client, r *Resp, state *AppState) {
 	cmd := r.arr[0].bulk
 	handler, ok := Handlers[cmd]
+	w := NewWrite(c.conn)
 	if !ok {
-		fmt.Println("invalid command :", cmd)
+		w.Write(&Resp{
+			sign: Error,
+			err:  "ERR invalid command",
+		})
+		w.Flush()
 		return
 	}
 
-	reply := handler(r, state)
-	w := NewWrite(conn)
+	if state.conf.requirepass && !c.authenticated && !contains(SafeCMDs, cmd) {
+		w.Write(&Resp{
+			sign: Error,
+			err:  "ERR operation not permitted",
+		})
+		w.Flush()
+		return
+	}
+
+	reply := handler(c, r, state)
 	w.Write(reply)
 	w.Flush()
 }
 
-func command(r *Resp, state *AppState) *Resp {
+func command(c *Client, r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: SimpleString,
 		str:  "OK",
 	}
 }
 
-func set(r *Resp, state *AppState) *Resp {
+func set(c *Client, r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	if len(args) != 2 {
 		return &Resp{
@@ -87,7 +105,7 @@ func set(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func get(r *Resp, state *AppState) *Resp {
+func get(c *Client, r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	if len(args) != 1 {
 		return &Resp{
@@ -109,7 +127,7 @@ func get(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func del(r *Resp, state *AppState) *Resp {
+func del(c *Client, r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	var n int
 
@@ -137,7 +155,7 @@ func del(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func exists(r *Resp, state *AppState) *Resp {
+func exists(c *Client, r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	var n int
 
@@ -155,7 +173,7 @@ func exists(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func keys(r *Resp, state *AppState) *Resp {
+func keys(c *Client, r *Resp, state *AppState) *Resp {
 	args := r.arr[1:]
 	if len(args) > 1 {
 		return &Resp{
@@ -189,27 +207,27 @@ func keys(r *Resp, state *AppState) *Resp {
 	return reply
 }
 
-func save(r *Resp, state *AppState) *Resp {
+func save(c *Client, r *Resp, state *AppState) *Resp {
 	SaveRDB(state)
 	return &Resp{
 		sign: SimpleString, str: "OK",
 	}
 }
 
-func bgsave(r *Resp, state *AppState) *Resp {
+func bgsave(c *Client, r *Resp, state *AppState) *Resp {
 	if state.bgsaveRunning {
 		return &Resp{
 			sign: Error, err: "ERR background save is already running",
 		}
 	}
 
-	c := make(map[string]string, len(DB.store))
+	cp := make(map[string]string, len(DB.store))
 	DB.mu.RLock()
-	maps.Copy(c, DB.store)
+	maps.Copy(cp, DB.store)
 	DB.mu.RUnlock()
 
 	state.bgsaveRunning = true
-	state.dbCopy = c
+	state.dbCopy = cp
 	go func() {
 		defer func() {
 			state.bgsaveRunning = false
@@ -224,7 +242,7 @@ func bgsave(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func dbsize(r *Resp, state *AppState) *Resp {
+func dbsize(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.RLock()
 	size := len(DB.store)
 	DB.mu.RUnlock()
@@ -235,11 +253,36 @@ func dbsize(r *Resp, state *AppState) *Resp {
 	}
 }
 
-func flushdb(r *Resp, state *AppState) *Resp {
+func flushdb(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.Lock()
 	DB.store = map[string]string{}
 	DB.mu.Unlock()
 
+	return &Resp{
+		sign: SimpleString,
+		str:  "OK",
+	}
+}
+
+func auth(c *Client, r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	if len(args) != 1 {
+		return &Resp{
+			sign: Error,
+			err:  "ERR invalid args for 'AUTH'",
+		}
+	}
+
+	if state.conf.requirepass {
+		if args[0].bulk != state.conf.password {
+			c.authenticated = false
+			return &Resp{
+				sign: Error,
+				err:  "ERR invalid password",
+			}
+		}
+	}
+	c.authenticated = true
 	return &Resp{
 		sign: SimpleString,
 		str:  "OK",

@@ -42,6 +42,7 @@ func (aof *Aof) Sync() {
 		}
 
 		blankState := NewAppState(&Config{})
-		set(&r, blankState)
+		c := Client{}
+		set(&c, &r, blankState)
 	}
 }

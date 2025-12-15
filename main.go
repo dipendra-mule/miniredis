@@ -51,15 +51,27 @@ func main() {
 
 func handleConn(conn net.Conn, state *AppState) {
 	log.Println("accepeted new connection: ", conn.LocalAddr().String())
+	c := NewClient(conn)
 	for {
 		r := Resp{sign: Array}
 		if err := r.parseRespArr(conn); err != nil {
 			log.Println(err)
 			break
 		}
-		handle(conn, &r, state)
+		handle(c, &r, state)
 	}
 	log.Println("connection closed: ", conn.LocalAddr().String())
+}
+
+type Client struct {
+	conn          net.Conn
+	authenticated bool
+}
+
+func NewClient(conn net.Conn) *Client {
+	return &Client{
+		conn: conn,
+	}
 }
 
 type AppState struct {
