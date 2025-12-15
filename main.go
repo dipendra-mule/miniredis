@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var UNIX_TS_EPOCH int64 = -62135596800
+
 func main() {
 	log.Println("reading config file")
 	conf := readConf("./redis.conf")

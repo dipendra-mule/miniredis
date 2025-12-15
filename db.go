@@ -21,6 +21,10 @@ func (db *Database) Set(k, v string) {
 	db.store[k] = &Key{V: v}
 }
 
+func (db *Database) Delete(k string) {
+	delete(db.store, k)
+}
+
 var DB = NewDatabase()
 
 type Key struct {

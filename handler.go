@@ -23,7 +23,7 @@ var Handlers = map[string]Handler{
 	"FLUSHDB": flushdb,
 	"AUTH":    auth,
 	"EXPIRE":  expire,
-
+	"TTL":     ttl,
 	"set":     set,
 	"get":     get,
 	"del":     del,
@@ -36,6 +36,7 @@ var Handlers = map[string]Handler{
 	"flushdb": flushdb,
 	"auth":    auth,
 	"expire":  expire,
+	"ttl":     ttl,
 }
 var SafeCMDs = []string{
 	"AUTH",
@@ -126,6 +127,14 @@ func get(c *Client, r *Resp, state *AppState) *Resp {
 	// --------- db unlocked ---------
 
 	if !ok {
+		return &Resp{
+			sign: Null,
+		}
+	}
+	if val.Exp.Unix() != UNIX_TS_EPOCH && time.Until(val.Exp).Seconds() <= 0 {
+		DB.mu.Lock()
+		DB.Delete(args[0].bulk)
+		DB.mu.Unlock()
 		return &Resp{
 			sign: Null,
 		}
@@ -333,5 +342,49 @@ func expire(c *Client, r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: Integer,
 		num:  1,
+	}
+}
+
+func ttl(c *Client, r *Resp, state *AppState) *Resp {
+	args := r.arr[1:]
+	if len(args) != 1 {
+		return &Resp{
+			sign: Error,
+			err:  "ERR invalid args for 'TTL'",
+		}
+	}
+
+	k := args[0].bulk
+	DB.mu.Lock()
+	defer DB.mu.Unlock()
+	key, ok := DB.store[k]
+	if !ok {
+		return &Resp{
+			sign: Integer,
+			num:  -2,
+		}
+	}
+	exp := key.Exp
+
+	if exp.Unix() == UNIX_TS_EPOCH {
+		return &Resp{
+			sign: Integer,
+			num:  -1,
+		}
+	}
+	expSecs := int(time.Until(exp).Seconds())
+	if expSecs <= 0 {
+
+		DB.Delete(k)
+
+		return &Resp{
+			sign: Integer,
+			num:  -2,
+		}
+	}
+
+	return &Resp{
+		sign: Integer,
+		num:  expSecs,
 	}
 }
