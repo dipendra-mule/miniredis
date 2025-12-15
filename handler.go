@@ -80,24 +80,24 @@ func set(c *Client, r *Resp, state *AppState) *Resp {
 			err:  "ERR invalid args for 'SET'",
 		}
 	}
-
 	k := args[0].bulk
 	v := args[1].bulk
+
+	// --------- db locked ---------
 	DB.mu.Lock()
-	DB.store[k] = v
+	DB.Set(k, v)
 	if state.conf.aofEnabled {
 		log.Println("saving aof file")
 		state.aof.w.Write(r)
-
 		if state.conf.aofFSync == Always {
 			state.aof.w.Flush()
 		}
 	}
-
 	if len(state.conf.rdb) >= 0 {
 		IncrRDBTracker()
 	}
 	DB.mu.Unlock()
+	// --------- db unlocked ---------
 
 	return &Resp{
 		sign: SimpleString,
@@ -114,7 +114,11 @@ func get(c *Client, r *Resp, state *AppState) *Resp {
 		}
 	}
 
-	val, ok := DB.Get(args[0].bulk)
+	// --------- db locked ---------
+	DB.mu.RLock()
+	val, ok := DB.store[args[0].bulk]
+	DB.mu.RUnlock()
+	// --------- db unlocked ---------
 
 	if !ok {
 		return &Resp{
@@ -123,7 +127,7 @@ func get(c *Client, r *Resp, state *AppState) *Resp {
 	}
 	return &Resp{
 		sign: BulkString,
-		bulk: val,
+		bulk: val.V,
 	}
 }
 
@@ -221,7 +225,7 @@ func bgsave(c *Client, r *Resp, state *AppState) *Resp {
 		}
 	}
 
-	cp := make(map[string]string, len(DB.store))
+	cp := make(map[string]*Key, len(DB.store))
 	DB.mu.RLock()
 	maps.Copy(cp, DB.store)
 	DB.mu.RUnlock()
@@ -255,7 +259,7 @@ func dbsize(c *Client, r *Resp, state *AppState) *Resp {
 
 func flushdb(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.Lock()
-	DB.store = map[string]string{}
+	DB.store = map[string]*Key{}
 	DB.mu.Unlock()
 
 	return &Resp{
