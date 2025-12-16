@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
+	"strings"
 )
 
 type Sign string // todo convert to byte later
@@ -29,37 +33,55 @@ type Resp struct {
 
 // *3\r\n$3\r\nSET\r\n$3\r\nKey\r\n$5\r\nValue\r\n
 
+func readLine(r *bufio.Reader) (string, error) {
+	line, err := r.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(line, "\r\n"), nil
+}
+
 func (r *Resp) parseRespArr(reader io.Reader) error {
-	buf := make([]byte, 4)
-	_, err := reader.Read(buf)
+	rd := bufio.NewReader(reader)
+
+	line, err := readLine(rd)
 	if err != nil {
 		return err
 	}
+	if line[0] != '*' {
+		return errors.New("expcted array")
+	}
 
-	arrLen, err := strconv.Atoi(string(buf[1])) // 3
+	arrLen, err := strconv.Atoi(line[1:])
 	if err != nil {
 		return err
 	}
 
 	for range arrLen {
-		bulk := r.parseBulkStr(reader)
+		bulk := r.parseBulkStr(rd)
 		r.arr = append(r.arr, bulk)
 	}
 	return nil
 }
 
-func (r *Resp) parseBulkStr(reader io.Reader) Resp {
-	buf := make([]byte, 4)
-	reader.Read(buf)
+func (r *Resp) parseBulkStr(reader *bufio.Reader) Resp {
+	line, err := readLine(reader)
+	if err != nil {
+		log.Println("error in parseBulkStr():", err)
+		return Resp{}
+	}
 
-	n, err := strconv.Atoi(string(buf[1]))
+	n, err := strconv.Atoi(line[1:])
 	if err != nil {
 		fmt.Println(err)
 		return Resp{}
 	}
 
 	bulkBuf := make([]byte, n+2)
-	reader.Read(bulkBuf)
+	if _, err := io.ReadFull(reader, bulkBuf); err != nil {
+		fmt.Println(err)
+		return Resp{}
+	}
 
 	bulk := string(bulkBuf[:n])
 	return Resp{

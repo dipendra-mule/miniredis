@@ -49,10 +49,11 @@ func (aof *Aof) Sync() {
 }
 
 func (aof *Aof) Rewrite(cp map[string]*Key) {
+	// Re-route future AOF records to buffer
 	var b bytes.Buffer
 	aof.w = NewWrite(&b)
 
-	// clear file contents
+	// Clear file contents
 	if err := aof.f.Truncate(0); err != nil {
 		log.Println("aof rewrite - truncate error:", err)
 		return
@@ -63,6 +64,7 @@ func (aof *Aof) Rewrite(cp map[string]*Key) {
 		return
 	}
 
+	// Rewrite all SET commands to file
 	fwriter := NewWrite(aof.f)
 	for k, v := range cp {
 		cmd := Resp{sign: BulkString, bulk: "SET"}
@@ -74,4 +76,8 @@ func (aof *Aof) Rewrite(cp map[string]*Key) {
 		}}
 		fwriter.Write(&arr)
 	}
+	fwriter.Flush()
+
+	// Re-route future AOF records back to file
+	aof.w = NewWrite(aof.f)
 }
