@@ -62,4 +62,6 @@ func (aof *Aof) Rewrite(cp map[string]*Key) {
 		log.Println("aof rewrite - seek error:", err)
 		return
 	}
+
+	fwriter := NewWrite(aof.)
 }
