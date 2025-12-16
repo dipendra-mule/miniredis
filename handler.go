@@ -11,32 +11,34 @@ import (
 type Handler func(*Client, *Resp, *AppState) *Resp
 
 var Handlers = map[string]Handler{
-	"SET":     set,
-	"GET":     get,
-	"DEL":     del,
-	"COMMAND": command,
-	"EXISTS":  exists,
-	"KEYS":    keys,
-	"SAVE":    save,
-	"BGSAVE":  bgsave,
-	"DBSIZE":  dbsize,
-	"FLUSHDB": flushdb,
-	"AUTH":    auth,
-	"EXPIRE":  expire,
-	"TTL":     ttl,
-	"set":     set,
-	"get":     get,
-	"del":     del,
-	"exists":  exists,
-	"keys":    keys,
-	"save":    save,
-	"bgsave":  bgsave,
-	"dbsize":  dbsize,
-	"size":    dbsize,
-	"flushdb": flushdb,
-	"auth":    auth,
-	"expire":  expire,
-	"ttl":     ttl,
+	"SET":        set,
+	"GET":        get,
+	"DEL":        del,
+	"COMMAND":    command,
+	"EXISTS":     exists,
+	"KEYS":       keys,
+	"SAVE":       save,
+	"BGSAVE":     bgsave,
+	"DBSIZE":     dbsize,
+	"FLUSHDB":    flushdb,
+	"AUTH":       auth,
+	"EXPIRE":     expire,
+	"TTL":        ttl,
+	"BGWRITEAOF": bgwriteaof,
+	"set":        set,
+	"get":        get,
+	"del":        del,
+	"exists":     exists,
+	"keys":       keys,
+	"save":       save,
+	"bgsave":     bgsave,
+	"dbsize":     dbsize,
+	"size":       dbsize,
+	"flushdb":    flushdb,
+	"auth":       auth,
+	"expire":     expire,
+	"ttl":        ttl,
+	"bgwriteaof": bgwriteaof,
 }
 var SafeCMDs = []string{
 	"AUTH",
@@ -150,6 +152,7 @@ func del(c *Client, r *Resp, state *AppState) *Resp {
 	var n int
 
 	DB.mu.Lock()
+	defer DB.mu.Unlock()
 	for _, arg := range args {
 		_, ok := DB.store[arg.bulk]
 		if ok {
@@ -165,7 +168,6 @@ func del(c *Client, r *Resp, state *AppState) *Resp {
 	// 		state.aof.w.Flush()
 	// 	}
 	// }
-	DB.mu.Unlock()
 
 	return &Resp{
 		sign: Integer,
@@ -262,8 +264,8 @@ func bgsave(c *Client, r *Resp, state *AppState) *Resp {
 
 func dbsize(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.RLock()
+	defer DB.mu.RUnlock()
 	size := len(DB.store)
-	DB.mu.RUnlock()
 
 	return &Resp{
 		sign: Integer,
@@ -273,8 +275,8 @@ func dbsize(c *Client, r *Resp, state *AppState) *Resp {
 
 func flushdb(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.Lock()
+	defer DB.mu.Unlock()
 	DB.store = map[string]*Key{}
-	DB.mu.Unlock()
 
 	return &Resp{
 		sign: SimpleString,
@@ -386,5 +388,20 @@ func ttl(c *Client, r *Resp, state *AppState) *Resp {
 	return &Resp{
 		sign: Integer,
 		num:  expSecs,
+	}
+}
+
+func bgwriteaof(c *Client, r *Resp, state *AppState) *Resp {
+	go func() {
+		DB.mu.RLock()
+		defer DB.mu.RUnlock()
+		cp := make(map[string]*Key, len(DB.store))
+		maps.Copy(cp, DB.store)
+
+		state.aof.Rewrite(cp)
+	}()
+	return &Resp{
+		sign: SimpleString,
+		str:  "Background AOF rewrite started",
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -44,5 +45,21 @@ func (aof *Aof) Sync() {
 		blankState := NewAppState(&Config{})
 		c := Client{}
 		set(&c, &r, blankState)
+	}
+}
+
+func (aof *Aof) Rewrite(cp map[string]*Key) {
+	var b bytes.Buffer
+	aof.w = NewWrite(&b)
+
+	// clear file contents
+	if err := aof.f.Truncate(0); err != nil {
+		log.Println("aof rewrite - truncate error:", err)
+		return
+	}
+
+	if _, err := aof.f.Seek(0, 0); err != nil {
+		log.Println("aof rewrite - seek error:", err)
+		return
 	}
 }
