@@ -63,5 +63,15 @@ func (aof *Aof) Rewrite(cp map[string]*Key) {
 		return
 	}
 
-	fwriter := NewWrite(aof.)
+	fwriter := NewWrite(aof.f)
+	for k, v := range cp {
+		cmd := Resp{sign: BulkString, bulk: "SET"}
+		key := Resp{sign: BulkString, bulk: k}
+		val := Resp{sign: BulkString, bulk: v.V}
+
+		arr := Resp{sign: Array, arr: []Resp{
+			cmd, key, val,
+		}}
+		fwriter.Write(&arr)
+	}
 }
