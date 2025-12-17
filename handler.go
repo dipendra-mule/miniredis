@@ -26,7 +26,6 @@ var Handlers = map[string]Handler{
 	"TTL":        ttl,
 	"BGWRITEAOF": bgwriteaof,
 	"MULTI":      multi,
-	"EXEC":       exec,
 	"DISCARD":    discard,
 	"set":        set,
 	"get":        get,
@@ -43,7 +42,6 @@ var Handlers = map[string]Handler{
 	"ttl":        ttl,
 	"bgwriteaof": bgwriteaof,
 	"multi":      multi,
-	"exec":       exec,
 	"discard":    discard,
 }
 var SafeCMDs = []string{
@@ -429,8 +427,17 @@ func multi(c *Client, r *Resp, state *AppState) *Resp {
 
 }
 
-func exec(c *Client, r *Resp, state *AppState) *Resp {
+func discard(c *Client, r *Resp, state *AppState) *Resp {
+	if state.tx == nil {
+		return &Resp{
+			sign: Error,
+			err:  "ERR DISCARD without MULTI",
+		}
+	}
 
+	state.tx = nil
+	return &Resp{
+		sign: SimpleString,
+		str:  "OK",
+	}
 }
-
-func discard(c *Client, r *Resp, state *AppState) *Resp {}
