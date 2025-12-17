@@ -31,3 +31,16 @@ type Key struct {
 	V   string
 	Exp time.Time
 }
+
+type Transaction struct {
+	cmds []*TxCommand
+}
+
+func NewTransaction() *Transaction {
+	return &Transaction{}
+}
+
+type TxCommand struct {
+	r       *Resp
+	handler Handler
+}

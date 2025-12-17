@@ -25,6 +25,9 @@ var Handlers = map[string]Handler{
 	"EXPIRE":     expire,
 	"TTL":        ttl,
 	"BGWRITEAOF": bgwriteaof,
+	"MULTI":      multi,
+	"EXEC":       exec,
+	"DISCARD":    discard,
 	"set":        set,
 	"get":        get,
 	"del":        del,
@@ -39,6 +42,9 @@ var Handlers = map[string]Handler{
 	"expire":     expire,
 	"ttl":        ttl,
 	"bgwriteaof": bgwriteaof,
+	"multi":      multi,
+	"exec":       exec,
+	"discard":    discard,
 }
 var SafeCMDs = []string{
 	"AUTH",
@@ -405,3 +411,26 @@ func bgwriteaof(c *Client, r *Resp, state *AppState) *Resp {
 		str:  "Background AOF rewrite started",
 	}
 }
+
+func multi(c *Client, r *Resp, state *AppState) *Resp {
+	if state.tx != nil {
+		return &Resp{
+			sign: Error,
+			err:  "ERR MULTI calls can not be nested",
+		}
+	}
+
+	state.tx = NewTransaction()
+
+	return &Resp{
+		sign: SimpleString,
+		str:  "OK",
+	}
+
+}
+
+func exec(c *Client, r *Resp, state *AppState) *Resp {
+
+}
+
+func discard(c *Client, r *Resp, state *AppState) *Resp {}

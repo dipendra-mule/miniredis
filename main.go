@@ -81,6 +81,7 @@ type AppState struct {
 	aof           *Aof
 	bgsaveRunning bool
 	dbCopy        map[string]*Key
+	tx            *Transaction
 }
 
 func NewAppState(conf *Config) *AppState {
