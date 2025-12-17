@@ -26,6 +26,7 @@ var Handlers = map[string]Handler{
 	"TTL":        ttl,
 	"BGWRITEAOF": bgwriteaof,
 	"MULTI":      multi,
+	"EXEC":       _exec,
 	"DISCARD":    discard,
 	"set":        set,
 	"get":        get,
@@ -42,6 +43,7 @@ var Handlers = map[string]Handler{
 	"ttl":        ttl,
 	"bgwriteaof": bgwriteaof,
 	"multi":      multi,
+	"exec":       _exec,
 	"discard":    discard,
 }
 var SafeCMDs = []string{
@@ -67,6 +69,17 @@ func handle(c *Client, r *Resp, state *AppState) {
 		w.Write(&Resp{
 			sign: Error,
 			err:  "ERR operation not permitted",
+		})
+		w.Flush()
+		return
+	}
+
+	if state.tx != nil && cmd != "EXEC" && cmd != "DISCARD" {
+		txCmd := TxCommand{r: r, handler: handler}
+		state.tx.cmds = append(state.tx.cmds, &txCmd)
+		w.Write(&Resp{
+			sign: SimpleString,
+			str:  "QUEUED",
 		})
 		w.Flush()
 		return
@@ -425,6 +438,27 @@ func multi(c *Client, r *Resp, state *AppState) *Resp {
 		str:  "OK",
 	}
 
+}
+
+func _exec(c *Client, r *Resp, state *AppState) *Resp {
+	if state.tx == nil {
+		return &Resp{
+			sign: Error,
+			err:  "ERR EXEC without MULTI",
+		}
+	}
+
+	replies := make([]Resp, len(state.tx.cmds))
+	for i, cmd := range state.tx.cmds {
+		reply := cmd.handler(c, cmd.r, state)
+		replies[i] = *reply // direct assignment
+	}
+	reply := Resp{
+		sign: Array,
+		arr:  replies,
+	}
+	state.tx = nil
+	return &reply
 }
 
 func discard(c *Client, r *Resp, state *AppState) *Resp {
