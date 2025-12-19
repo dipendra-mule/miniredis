@@ -32,6 +32,14 @@ type Key struct {
 	Exp time.Time
 }
 
+func (key *Key) approxMemUsage(name string) int {
+	stringHeader := 16
+	expHeader := 24
+	mapEntrySize := 32
+
+	return stringHeader + len(name) + stringHeader + len(key.V) + expHeader + mapEntrySize
+}
+
 type Transaction struct {
 	cmds []*TxCommand
 }
