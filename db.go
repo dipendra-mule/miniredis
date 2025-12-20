@@ -20,8 +20,14 @@ func NewDatabase() *Database {
 }
 
 func (db *Database) Set(k, v string) {
+	if old, ok := db.store[k]; ok {
+		oldmem := old.approxMemUsage(k)
+		db.mem -= oldmem
+	}
+
 	key := &Key{V: v}
 	kmem := key.approxMemUsage(k)
+
 	db.store[k] = key
 	db.mem += kmem
 	log.Println("db.mem", db.mem)
