@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sync"
 	"time"
 )
@@ -8,6 +9,7 @@ import (
 type Database struct {
 	store map[string]*Key
 	mu    sync.RWMutex
+	mem   int
 }
 
 func NewDatabase() *Database {
@@ -18,7 +20,11 @@ func NewDatabase() *Database {
 }
 
 func (db *Database) Set(k, v string) {
-	db.store[k] = &Key{V: v}
+	key := &Key{V: v}
+	kmem := key.approxMemUsage(k)
+	db.store[k] = key
+	db.mem += kmem
+	log.Println("db.mem", db.mem)
 }
 
 func (db *Database) Delete(k string) {
