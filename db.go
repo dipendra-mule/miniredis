@@ -19,8 +19,6 @@ func NewDatabase() *Database {
 	}
 }
 
-func 
-
 func (db *Database) Set(k, v string) {
 	if old, ok := db.store[k]; ok {
 		oldmem := old.approxMemUsage(k)
