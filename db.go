@@ -34,7 +34,15 @@ func (db *Database) Set(k, v string) {
 }
 
 func (db *Database) Delete(k string) {
+	key, ok := db.store[k]
+	if !ok {
+		return // fail gracefully
+	}
+	kmem := key.approxMemUsage(k)
+
 	delete(db.store, k)
+	db.mem -= kmem
+	log.Println("db.mem", db.mem)
 }
 
 var DB = NewDatabase()

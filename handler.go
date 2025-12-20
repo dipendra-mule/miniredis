@@ -153,21 +153,13 @@ func del(c *Client, r *Resp, state *AppState) *Resp {
 
 	DB.mu.Lock()
 	defer DB.mu.Unlock()
+
 	for _, arg := range args {
-		_, ok := DB.store[arg.bulk]
-		if ok {
-			delete(DB.store, arg.bulk)
+		if _, ok := DB.store[arg.bulk]; ok {
+			DB.Delete(arg.bulk)
 			n++
 		}
 	}
-	// if state.conf.aofEnabled {
-	// 	log.Println("saving aof file")
-	// 	state.aof.w.Write(r)
-
-	// 	if state.conf.aofFSync == Always {
-	// 		state.aof.w.Flush()
-	// 	}
-	// }
 
 	return &Resp{
 		sign: Integer,
@@ -376,9 +368,7 @@ func ttl(c *Client, r *Resp, state *AppState) *Resp {
 	}
 	expSecs := int(time.Until(exp).Seconds())
 	if expSecs <= 0 {
-
 		DB.Delete(k)
-
 		return &Resp{
 			sign: Integer,
 			num:  -2,
