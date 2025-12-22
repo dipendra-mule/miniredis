@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -30,7 +29,7 @@ func (db *Database) Set(k, v string) {
 
 	db.store[k] = key
 	db.mem += kmem
-	log.Println("db.mem", db.mem)
+
 }
 
 func (db *Database) Delete(k string) {
@@ -42,7 +41,6 @@ func (db *Database) Delete(k string) {
 
 	delete(db.store, k)
 	db.mem -= kmem
-	log.Println("db.mem", db.mem)
 }
 
 var DB = NewDatabase()
