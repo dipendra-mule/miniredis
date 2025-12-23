@@ -93,7 +93,7 @@ func set(c *Client, r *Resp, state *AppState) *Resp {
 
 	// --------- db locked ---------
 	DB.mu.Lock()
-	DB.Set(k, v)
+	DB.Set(k, v, state)
 	if state.conf.aofEnabled {
 		log.Println("saving aof file")
 		state.aof.w.Write(r)

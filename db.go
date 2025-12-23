@@ -9,7 +9,7 @@ import (
 type Database struct {
 	store map[string]*Key
 	mu    sync.RWMutex
-	mem   int
+	mem   int64
 }
 
 func NewDatabase() *Database {
@@ -19,13 +19,14 @@ func NewDatabase() *Database {
 	}
 }
 
-func (db *Database) evictKeys(state *AppState, requiredMem int) error {
+func (db *Database) evictKeys(state *AppState, requiredMem int64) error {
 	if state.conf.eviction == NoEvcition {
 		return errors.New("maximum memory reached")
 	}
+	return nil
 }
 
-func (db *Database) Set(k, v string) {
+func (db *Database) Set(k, v string, state *AppState) {
 	if old, ok := db.store[k]; ok {
 		oldmem := old.approxMemUsage(k)
 		db.mem -= oldmem
@@ -33,6 +34,11 @@ func (db *Database) Set(k, v string) {
 
 	key := &Key{V: v}
 	kmem := key.approxMemUsage(k)
+
+	outOfMem := state.conf.maxmem > 0 && db.mem+kmem >= state.conf.maxmem
+	if outOfMem {
+		db.evictKeys(state, kmem)
+	}
 
 	db.store[k] = key
 	db.mem += kmem
@@ -57,12 +63,12 @@ type Key struct {
 	Exp time.Time
 }
 
-func (key *Key) approxMemUsage(name string) int {
+func (key *Key) approxMemUsage(name string) int64 {
 	stringHeader := 16
 	expHeader := 24
 	mapEntrySize := 32
 
-	return stringHeader + len(name) + stringHeader + len(key.V) + expHeader + mapEntrySize
+	return int64(stringHeader + len(name) + stringHeader + len(key.V) + expHeader + mapEntrySize)
 }
 
 type Transaction struct {
