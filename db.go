@@ -26,7 +26,7 @@ func (db *Database) evictKeys(state *AppState, requiredMem int64) error {
 	return nil
 }
 
-func (db *Database) Set(k, v string, state *AppState) {
+func (db *Database) Set(k, v string, state *AppState) error {
 	if old, ok := db.store[k]; ok {
 		oldmem := old.approxMemUsage(k)
 		db.mem -= oldmem
@@ -37,12 +37,16 @@ func (db *Database) Set(k, v string, state *AppState) {
 
 	outOfMem := state.conf.maxmem > 0 && db.mem+kmem >= state.conf.maxmem
 	if outOfMem {
-		db.evictKeys(state, kmem)
+		err := db.evictKeys(state, kmem)
+		if err != nil {
+			return err
+		}
 	}
 
 	db.store[k] = key
 	db.mem += kmem
 
+	return nil
 }
 
 func (db *Database) Delete(k string) {

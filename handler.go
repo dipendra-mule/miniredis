@@ -91,9 +91,17 @@ func set(c *Client, r *Resp, state *AppState) *Resp {
 	k := args[0].bulk
 	v := args[1].bulk
 
-	// --------- db locked ---------
 	DB.mu.Lock()
-	DB.Set(k, v, state)
+	err := DB.Set(k, v, state)
+
+	if err != nil {
+		DB.mu.Unlock()
+		return &Resp{
+			sign: Error,
+			err:  "ERR" + err.Error(),
+		}
+	}
+
 	if state.conf.aofEnabled {
 		log.Println("saving aof file")
 		state.aof.w.Write(r)
@@ -104,8 +112,11 @@ func set(c *Client, r *Resp, state *AppState) *Resp {
 	if len(state.conf.rdb) >= 0 {
 		IncrRDBTracker()
 	}
+
+	// if state.conf.rdbEnabled { // <- use a real flag
+	// 	IncrRDBTracker()
+	// }
 	DB.mu.Unlock()
-	// --------- db unlocked ---------
 
 	return &Resp{
 		sign: SimpleString,
