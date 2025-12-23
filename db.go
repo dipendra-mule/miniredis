@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -15,6 +16,12 @@ func NewDatabase() *Database {
 	return &Database{
 		store: map[string]*Key{},
 		mu:    sync.RWMutex{},
+	}
+}
+
+func (db *Database) evictKeys(state *AppState, requiredMem int) error {
+	if state.conf.eviction == NoEvcition {
+		return errors.New("maximum memory reached")
 	}
 }
 
