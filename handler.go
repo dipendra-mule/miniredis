@@ -135,7 +135,7 @@ func get(c *Client, r *Resp, state *AppState) *Resp {
 
 	// --------- db locked ---------
 	DB.mu.RLock()
-	val, ok := DB.store[args[0].bulk]
+	item, ok := DB.Get(args[0].bulk)
 	DB.mu.RUnlock()
 	// --------- db unlocked ---------
 
@@ -144,17 +144,9 @@ func get(c *Client, r *Resp, state *AppState) *Resp {
 			sign: Null,
 		}
 	}
-	if val.Exp.Unix() != UNIX_TS_EPOCH && time.Until(val.Exp).Seconds() <= 0 {
-		DB.mu.Lock()
-		DB.Delete(args[0].bulk)
-		DB.mu.Unlock()
-		return &Resp{
-			sign: Null,
-		}
-	}
 	return &Resp{
 		sign: BulkString,
-		bulk: val.V,
+		bulk: item.V,
 	}
 }
 
@@ -244,7 +236,7 @@ func bgsave(c *Client, r *Resp, state *AppState) *Resp {
 		}
 	}
 
-	cp := make(map[string]*Key, len(DB.store))
+	cp := make(map[string]*Item, len(DB.store))
 	DB.mu.RLock()
 	maps.Copy(cp, DB.store)
 	DB.mu.RUnlock()
@@ -279,7 +271,7 @@ func dbsize(c *Client, r *Resp, state *AppState) *Resp {
 func flushdb(c *Client, r *Resp, state *AppState) *Resp {
 	DB.mu.Lock()
 	defer DB.mu.Unlock()
-	DB.store = map[string]*Key{}
+	DB.store = map[string]*Item{}
 
 	return &Resp{
 		sign: SimpleString,
@@ -396,7 +388,7 @@ func bgwriteaof(c *Client, r *Resp, state *AppState) *Resp {
 	go func() {
 		DB.mu.RLock()
 		defer DB.mu.RUnlock()
-		cp := make(map[string]*Key, len(DB.store))
+		cp := make(map[string]*Item, len(DB.store))
 		maps.Copy(cp, DB.store)
 
 		state.aof.Rewrite(cp)

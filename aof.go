@@ -48,7 +48,7 @@ func (aof *Aof) Sync() {
 	}
 }
 
-func (aof *Aof) Rewrite(cp map[string]*Key) {
+func (aof *Aof) Rewrite(cp map[string]*Item) {
 	// Re-route future AOF records to buffer
 	var b bytes.Buffer
 	aof.w = NewWrite(&b)
