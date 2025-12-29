@@ -57,9 +57,9 @@ func handle(c *Client, r *Resp, state *AppState) {
 		return
 	}
 
-	if state.tx != nil && cmd != "EXEC" && cmd != "DISCARD" {
+	if c.tx != nil && cmd != "EXEC" && cmd != "DISCARD" {
 		txCmd := TxCommand{r: r, handler: handler}
-		state.tx.cmds = append(state.tx.cmds, &txCmd)
+		c.tx.cmds = append(c.tx.cmds, &txCmd)
 		w.Write(&Resp{
 			sign: SimpleString,
 			str:  "QUEUED",
@@ -408,14 +408,14 @@ func bgwriteaof(c *Client, r *Resp, state *AppState) *Resp {
 }
 
 func multi(c *Client, r *Resp, state *AppState) *Resp {
-	if state.tx != nil {
+	if c.tx != nil {
 		return &Resp{
 			sign: Error,
 			err:  "ERR MULTI calls can not be nested",
 		}
 	}
 
-	state.tx = NewTransaction()
+	c.tx = NewTransaction()
 
 	return &Resp{
 		sign: SimpleString,
@@ -425,15 +425,15 @@ func multi(c *Client, r *Resp, state *AppState) *Resp {
 }
 
 func _exec(c *Client, r *Resp, state *AppState) *Resp {
-	if state.tx == nil {
+	if c.tx == nil {
 		return &Resp{
 			sign: Error,
 			err:  "ERR EXEC without MULTI",
 		}
 	}
 
-	replies := make([]Resp, len(state.tx.cmds))
-	for i, cmd := range state.tx.cmds {
+	replies := make([]Resp, len(c.tx.cmds))
+	for i, cmd := range c.tx.cmds {
 		reply := cmd.handler(c, cmd.r, state)
 		replies[i] = *reply // direct assignment
 	}
@@ -441,19 +441,19 @@ func _exec(c *Client, r *Resp, state *AppState) *Resp {
 		sign: Array,
 		arr:  replies,
 	}
-	state.tx = nil
+	c.tx = nil
 	return &reply
 }
 
 func discard(c *Client, r *Resp, state *AppState) *Resp {
-	if state.tx == nil {
+	if c.tx == nil {
 		return &Resp{
 			sign: Error,
 			err:  "ERR DISCARD without MULTI",
 		}
 	}
 
-	state.tx = nil
+	c.tx = nil
 	return &Resp{
 		sign: SimpleString,
 		str:  "OK",

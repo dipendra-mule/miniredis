@@ -48,7 +48,7 @@ func main() {
 			wg.Done()
 		}()
 	}
-	wg.Wait()
+	// wg.Wait()
 }
 
 func handleConn(conn net.Conn, state *AppState) {
@@ -68,6 +68,7 @@ func handleConn(conn net.Conn, state *AppState) {
 type Client struct {
 	conn          net.Conn
 	authenticated bool
+	tx            *Transaction
 }
 
 func NewClient(conn net.Conn) *Client {
@@ -81,7 +82,6 @@ type AppState struct {
 	aof           *Aof
 	bgsaveRunning bool
 	dbCopy        map[string]*Key
-	tx            *Transaction
 }
 
 func NewAppState(conf *Config) *AppState {
