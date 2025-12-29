@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -31,9 +32,10 @@ func NewAof(conf *Config) *Aof {
 }
 
 func (aof *Aof) Sync() {
+	rd := bufio.NewReader(aof.f)
 	for {
 		r := Resp{}
-		err := r.parseRespArr(aof.f)
+		err := r.parseRespArr(rd)
 		if err == io.EOF {
 			break
 		}

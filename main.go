@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -54,9 +55,10 @@ func main() {
 func handleConn(conn net.Conn, state *AppState) {
 	log.Println("accepeted new connection: ", conn.LocalAddr().String())
 	c := NewClient(conn)
+	rd := bufio.NewReader(conn)
 	for {
 		r := Resp{sign: Array}
-		if err := r.parseRespArr(conn); err != nil {
+		if err := r.parseRespArr(rd); err != nil {
 			log.Println(err)
 			break
 		}

@@ -41,8 +41,7 @@ func readLine(r *bufio.Reader) (string, error) {
 	return strings.TrimSuffix(line, "\r\n"), nil
 }
 
-func (r *Resp) parseRespArr(reader io.Reader) error {
-	rd := bufio.NewReader(reader)
+func (r *Resp) parseRespArr(rd *bufio.Reader) error {
 
 	line, err := readLine(rd)
 	if err != nil {
@@ -58,34 +57,38 @@ func (r *Resp) parseRespArr(reader io.Reader) error {
 	}
 
 	for range arrLen {
-		bulk := r.parseBulkStr(rd)
+		bulk, err := r.parseBulkStr(rd)
+		if err != nil {
+			log.Println("error in parseRespArr():", err)
+			return err
+		}
 		r.arr = append(r.arr, bulk)
 	}
 	return nil
 }
 
-func (r *Resp) parseBulkStr(reader *bufio.Reader) Resp {
+func (r *Resp) parseBulkStr(reader *bufio.Reader) (Resp, error) {
 	line, err := readLine(reader)
 	if err != nil {
 		log.Println("error in parseBulkStr():", err)
-		return Resp{}
+		return Resp{}, err
 	}
 
 	n, err := strconv.Atoi(line[1:])
 	if err != nil {
 		fmt.Println(err)
-		return Resp{}
+		return Resp{}, err
 	}
 
 	bulkBuf := make([]byte, n+2)
 	if _, err := io.ReadFull(reader, bulkBuf); err != nil {
 		fmt.Println(err)
-		return Resp{}
+		return Resp{}, err
 	}
 
 	bulk := string(bulkBuf[:n])
 	return Resp{
 		sign: BulkString,
 		bulk: bulk,
-	}
+	}, nil
 }
