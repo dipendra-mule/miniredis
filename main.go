@@ -6,8 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync"
-	"time"
 )
 
 var UNIX_TS_EPOCH int64 = -62135596800
@@ -34,7 +32,6 @@ func main() {
 	defer l.Close()
 	log.Println("listening on :6379")
 
-	var wg sync.WaitGroup
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -43,13 +40,11 @@ func main() {
 		}
 		fmt.Println("connection accepeted: ", conn.RemoteAddr())
 
-		wg.Add(1)
 		go func() {
 			handleConn(conn, state)
-			wg.Done()
+
 		}()
 	}
-	// wg.Wait()
 }
 
 func handleConn(conn net.Conn, state *AppState) {
@@ -65,46 +60,4 @@ func handleConn(conn net.Conn, state *AppState) {
 		handle(c, &r, state)
 	}
 	log.Println("connection closed: ", conn.LocalAddr().String())
-}
-
-type Client struct {
-	conn          net.Conn
-	authenticated bool
-	tx            *Transaction
-}
-
-func NewClient(conn net.Conn) *Client {
-	return &Client{
-		conn: conn,
-	}
-}
-
-type AppState struct {
-	conf          *Config
-	aof           *Aof
-	bgsaveRunning bool
-	dbCopy        map[string]*Item
-}
-
-func NewAppState(conf *Config) *AppState {
-	state := AppState{
-		conf: conf,
-	}
-
-	if conf.aofEnabled {
-		state.aof = NewAof(conf)
-
-		if conf.aofFSync == EverySec {
-			go func() {
-				t := time.NewTicker(time.Second)
-				defer t.Stop()
-
-				for range t.C {
-					state.aof.w.Flush()
-				}
-			}()
-		}
-	}
-
-	return &state
 }
