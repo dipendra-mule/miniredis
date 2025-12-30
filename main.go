@@ -45,7 +45,6 @@ func main() {
 
 		}()
 	}
-
 }
 
 func handleConn(conn net.Conn, state *AppState) {
