@@ -10,16 +10,19 @@ import (
 )
 
 type Config struct {
-	dir         string
-	rdb         []RDBSnapshot
-	rdbFn       string
-	aofEnabled  bool
-	aofFn       string
-	aofFSync    FSyncMode
-	requirepass bool
-	password    string
-	maxmem      int64
-	eviction    Eviction
+	dir            string
+	rdb            []RDBSnapshot
+	rdbFn          string
+	aofEnabled     bool
+	aofFn          string
+	aofFSync       FSyncMode
+	requirepass    bool
+	password       string
+	maxmem         int64
+	MaxBulkSize    int64 // ✅ already added (correct)
+	MaxCommandSize int64
+	MaxCommandArgs int
+	eviction       Eviction
 }
 
 func NewConfig() *Config {
@@ -51,30 +54,45 @@ func readConf(fn string) *Config {
 	f, err := os.Open(fn)
 	if err != nil {
 		fmt.Printf("cannot read %s - using default config\n", fn)
-		return conf
-	}
-	defer f.Close()
+	} else {
+		defer f.Close()
 
-	s := bufio.NewScanner(f)
+		s := bufio.NewScanner(f)
 
-	for s.Scan() {
-		l := s.Text()
-		parseLine(l, conf)
+		for s.Scan() {
+			l := s.Text()
+			parseLine(l, conf)
+		}
+
+		if err := s.Err(); err != nil {
+			fmt.Println("error scanning config file:", err)
+		}
+
+		if conf.dir != "" {
+			os.MkdirAll(conf.dir, 0755)
+		}
 	}
 
-	if err := s.Err(); err != nil {
-		fmt.Println("error scanning config file:", err)
-		return conf
+	// ✅ DEFAULT VALUE (minimal addition)
+	if conf.MaxBulkSize == 0 {
+		conf.MaxBulkSize = 64 * 1024 * 1024 // 64MB
+	}
+	if conf.MaxCommandSize == 0 {
+		conf.MaxCommandSize = 10 * 1024 * 1024 // 10MB
+	}
+	if conf.MaxCommandArgs == 0 {
+		conf.MaxCommandArgs = 1000
 	}
 
-	if conf.dir != "" {
-		os.MkdirAll(conf.dir, 0755)
-	}
 	return conf
 }
 
 func parseLine(l string, conf *Config) {
 	args := strings.Split(l, " ")
+	if len(args) == 0 {
+		return
+	}
+
 	cmd := args[0]
 
 	switch cmd {
@@ -98,21 +116,23 @@ func parseLine(l string, conf *Config) {
 
 	case "dbfilename":
 		conf.rdbFn = args[1]
+
 	case "appendfilename":
 		conf.aofFn = args[1]
+
 	case "dir":
 		conf.dir = args[1]
+
 	case "appendonly":
-		if args[1] == "yes" {
-			conf.aofEnabled = true
-		} else {
-			conf.aofEnabled = false
-		}
+		conf.aofEnabled = args[1] == "yes"
+
 	case "appendfsync":
 		conf.aofFSync = FSyncMode(args[1])
+
 	case "requirepass":
 		conf.requirepass = true
 		conf.password = args[1]
+
 	case "maxmemory":
 		maxmem, err := parseMem(args[1])
 		if err != nil {
@@ -121,10 +141,38 @@ func parseLine(l string, conf *Config) {
 			break
 		}
 		conf.maxmem = maxmem
+
+	// ✅ EXACTLY same style as maxmemory
+	case "max-bulk-size":
+		size, err := parseMem(args[1])
+		if err != nil {
+			log.Println("cannot parse max-bulk-size. defaulting to 0. error:", err)
+			conf.MaxBulkSize = 0
+			break
+		}
+		conf.MaxBulkSize = size
+
+	case "max-command-size":
+		size, err := parseMem(args[1])
+		if err != nil {
+			log.Println("cannot parse max-command-size. defaulting to 0. error:", err)
+			conf.MaxCommandSize = 0
+			break
+		}
+		conf.MaxCommandSize = size
+
+	case "max-command-args":
+		maxArgs, err := strconv.Atoi(args[1])
+		if err != nil {
+			log.Println("cannot parse max-command-args. defaulting to 0. error:", err)
+			conf.MaxCommandArgs = 0
+			break
+		}
+		conf.MaxCommandArgs = maxArgs
+
 	case "maxmemory-policy":
 		conf.eviction = Eviction(args[1])
 	}
-
 }
 
 func parseMem(s string) (int64, error) {

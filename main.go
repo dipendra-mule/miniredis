@@ -14,6 +14,18 @@ var UNIX_TS_EPOCH int64 = -62135596800
 func main() {
 	log.Println("reading config file")
 	conf := readConf("./redis.conf")
+
+	// Wire config → RESP parser
+	if conf.MaxBulkSize > 0 {
+		MaxBulkSize = conf.MaxBulkSize
+	}
+	if conf.MaxCommandSize > 0 {
+		MaxCommandSize = conf.MaxCommandSize
+	}
+	if conf.MaxCommandArgs > 0 {
+		MaxCommandArgs = conf.MaxCommandArgs
+	}
+
 	state := NewAppState(conf)
 
 	if conf.aofEnabled {
@@ -48,20 +60,38 @@ func main() {
 			wg.Done()
 		}()
 	}
-	// wg.Wait()
 }
 
 func handleConn(conn net.Conn, state *AppState) {
 	log.Println("accepeted new connection: ", conn.LocalAddr().String())
 	c := NewClient(conn)
+
 	for {
 		r := Resp{sign: Array}
+
 		if err := r.parseRespArr(conn); err != nil {
+			// ✅ Send protocol error
+			w := NewWrite(conn)
+			w.Write(&Resp{
+				sign: Error,
+				err:  err.Error(),
+			})
+			w.Flush()
+
 			log.Println(err)
+
+			// 🔥 FORCE CLIENT WRITE TO FAIL (TCP RST)
+			if tcp, ok := conn.(*net.TCPConn); ok {
+				tcp.SetLinger(0)
+			}
+
+			conn.Close()
 			break
 		}
+
 		handle(c, &r, state)
 	}
+
 	log.Println("connection closed: ", conn.LocalAddr().String())
 }
 

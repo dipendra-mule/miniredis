@@ -21,6 +21,15 @@ const (
 	Null         Sign = ""
 )
 
+// ✅ Maximum allowed bulk string size (overridden by config)
+var MaxBulkSize int64 = 64 * 1024 * 1024
+
+// Maximum allowed command size (overridden by config)
+var MaxCommandSize int64 = 10 * 1024 * 1024
+
+// Maximum allowed command arguments (overridden by config)
+var MaxCommandArgs int = 1000
+
 type Resp struct {
 	sign Sign
 	num  int
@@ -28,7 +37,7 @@ type Resp struct {
 	str  string
 	arr  []Resp
 	err  string
-	// null    bool
+	// null bool
 }
 
 // *3\r\n$3\r\nSET\r\n$3\r\nKey\r\n$5\r\nValue\r\n
@@ -57,10 +66,29 @@ func (r *Resp) parseRespArr(reader io.Reader) error {
 		return err
 	}
 
-	for range arrLen {
+	if arrLen > MaxCommandArgs {
+		return errors.New("command exceeds maximum allowed arguments")
+	}
+
+	totalSize := int64(0)
+	for i := 0; i < arrLen; i++ {
 		bulk := r.parseBulkStr(rd)
+
+		// ✅ propagate bulk parsing error upward
+		if bulk.sign == Error {
+			return errors.New(bulk.str)
+		}
+
+		if bulk.sign == BulkString {
+			totalSize += int64(len(bulk.bulk))
+			if totalSize > MaxCommandSize {
+				return errors.New("command exceeds maximum allowed size")
+			}
+		}
+
 		r.arr = append(r.arr, bulk)
 	}
+
 	return nil
 }
 
@@ -75,6 +103,15 @@ func (r *Resp) parseBulkStr(reader *bufio.Reader) Resp {
 	if err != nil {
 		fmt.Println(err)
 		return Resp{}
+	}
+
+	// ✅ enforce limit BEFORE allocation
+	if int64(n) > MaxBulkSize {
+		log.Println("bulk string exceeds maximum allowed size:", n)
+		return Resp{
+			sign: Error,
+			str:  "bulk string exceeds maximum allowed size",
+		}
 	}
 
 	bulkBuf := make([]byte, n+2)
