@@ -19,9 +19,9 @@ type Config struct {
 	requirepass    bool
 	password       string
 	maxmem         int64
-	MaxBulkSize    int64 // ✅ already added (correct)
-	MaxCommandSize int64
-	MaxCommandArgs int
+	maxBulkSize    int64 // ✅ already added (correct)
+	maxCommandSize int64
+	maxCommandArgs int
 	eviction       Eviction
 }
 
@@ -40,6 +40,12 @@ const (
 	Always   FSyncMode = "always"
 	EverySec FSyncMode = "everysec"
 	No       FSyncMode = "no"
+)
+
+const (
+	defaultMaxBulkSize    = 8 * 1024 * 1024   // 8MB
+	defaultMaxCommandSize = 1 * 1024 * 1024   // 1MB
+	defaultMaxCommandArgs = 256
 )
 
 type Eviction string
@@ -75,13 +81,13 @@ func readConf(fn string) *Config {
 
 	// ✅ DEFAULT VALUE (minimal addition)
 	if conf.MaxBulkSize == 0 {
-		conf.MaxBulkSize = 64 * 1024 * 1024 // 64MB
+		conf.MaxBulkSize = defaultMaxBulkSize // 8MB
 	}
 	if conf.MaxCommandSize == 0 {
-		conf.MaxCommandSize = 10 * 1024 * 1024 // 10MB
+		conf.MaxCommandSize = defaultMaxCommandSize // 10MB
 	}
 	if conf.MaxCommandArgs == 0 {
-		conf.MaxCommandArgs = 1000
+		conf.MaxCommandArgs = defaultMaxCommandArgs
 	}
 
 	return conf
