@@ -66,7 +66,13 @@ func (r *Resp) parseRespArr(rd *bufio.Reader) error {
 	}
 
 	for range arrLen {
-		bulk := r.parseBulkStr(rd)
+		bulk, err := r.parseBulkStr(rd)
+		if err != nil {
+			return err
+		}
+		if bulk.sign == Null {
+			return errors.New("null value in array")
+		}
 		r.arr = append(r.arr, bulk)
 	}
 
@@ -92,7 +98,7 @@ func (r *Resp) parseBulkStr(reader *bufio.Reader) (Resp, error) {
 		return Resp{
 			sign: Error,
 			str:  "bulk string exceeds maximum allowed size",
-		}
+		}, errors.New("bulk string exceeds maximum allowed size")
 	}
 
 	bulkBuf := make([]byte, n+2)
