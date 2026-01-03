@@ -80,16 +80,15 @@ func readConf(fn string) *Config {
 	}
 
 	// ✅ DEFAULT VALUE (minimal addition)
-	if conf.MaxBulkSize == 0 {
-		conf.MaxBulkSize = defaultMaxBulkSize // 8MB
+	if cfg.MaxBulkSize <= 0 {
+		cfg.MaxBulkSize = defaultMaxBulkSize
 	}
-	if conf.MaxCommandSize == 0 {
-		conf.MaxCommandSize = defaultMaxCommandSize // 10MB
+	if cfg.MaxCommandSize <= 0 {
+		cfg.MaxCommandSize = defaultMaxCommandSize
 	}
-	if conf.MaxCommandArgs == 0 {
-		conf.MaxCommandArgs = defaultMaxCommandArgs
+	if cfg.MaxCommandArgs <= 0 {
+		cfg.MaxCommandArgs = defaultMaxCommandArgs
 	}
-
 	return conf
 }
 
