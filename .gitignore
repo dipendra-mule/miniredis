@@ -1,5 +1,2 @@
-data
-./backup.rdb
-./backup.aof
-
-docs
+data/backup.rdb
+data/backup.aof
