@@ -67,7 +67,7 @@ func (r *Resp) parseRespArr(reader io.Reader) error {
 	}
 
 	if arrLen > MaxCommandArgs {
-		return errors.New("command exceeds maximum allowed arguments")
+		return fmt.Errorf("too many arguments (max %d)", r.maxCommandArgs)
 	}
 
 	totalSize := int64(0)
@@ -82,7 +82,7 @@ func (r *Resp) parseRespArr(reader io.Reader) error {
 		if bulk.sign == BulkString {
 			totalSize += int64(len(bulk.bulk))
 			if totalSize > MaxCommandSize {
-				return errors.New("command exceeds maximum allowed size")
+				return fmt.Errorf("command too large (max %d bytes)", r.maxCommandSize)
 			}
 		}
 
