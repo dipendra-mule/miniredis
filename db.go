@@ -103,7 +103,7 @@ func (db *Database) Set(k, v string, state *AppState) error {
 	key := &Item{V: v}
 	kmem := key.approxMemUsage(k)
 
-	outOfMem := state.conf.maxmem > 0 && db.mem+kmem >= state.conf.maxmem
+	outOfMem := state.conf.maxmem > 0 && db.mem+kmem > state.conf.maxmem
 	if outOfMem {
 		err := db.evictKeys(state, kmem)
 		if err != nil {
