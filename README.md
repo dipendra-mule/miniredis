@@ -172,7 +172,7 @@ SET mykey "Hello World"
 GET mykey
 
 # Set expiration
-SET mykey "Hello" EX 60
+SET mykey "Hello" 
 EXPIRE mykey 60
 
 # Check TTL
