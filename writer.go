@@ -35,7 +35,7 @@ func (w *Writer) Deserialize(r *Resp) (reply string) {
 	case Null:
 		reply = "$-1\r\n"
 	default:
-		log.Println("invalid typ received")
+		log.Println("invalid type received")
 		return reply
 	}
 	return reply

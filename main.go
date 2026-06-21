@@ -50,7 +50,7 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println("connection accepeted: ", conn.RemoteAddr())
+		fmt.Println("connection accepted: ", conn.RemoteAddr())
 
 		go func() {
 			handleConn(conn, state)
@@ -60,7 +60,7 @@ func main() {
 }
 
 func handleConn(conn net.Conn, state *AppState) {
-	log.Println("accepeted new connection: ", conn.LocalAddr().String())
+	log.Println("accepted new connection: ", conn.LocalAddr().String())
 	c := NewClient(conn)
 	rd := bufio.NewReader(conn)
 	for {

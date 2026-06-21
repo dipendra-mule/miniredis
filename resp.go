@@ -57,7 +57,7 @@ func (r *Resp) parseRespArr(rd *bufio.Reader) error {
 		return err
 	}
 	if line[0] != '*' {
-		return errors.New("expcted array")
+		return errors.New("expected array")
 	}
 
 	arrLen, err := strconv.Atoi(line[1:])
