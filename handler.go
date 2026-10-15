@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"maps"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -238,7 +237,9 @@ func bgsave(c *Client, r *Resp, state *AppState) *Resp {
 
 	cp := make(map[string]*Item, len(DB.store))
 	DB.mu.RLock()
-	maps.Copy(cp, DB.store)
+	for k, v := range DB.store {
+		cp[k] = v
+	}
 	DB.mu.RUnlock()
 
 	state.bgsaveRunning = true
@@ -389,7 +390,9 @@ func bgwriteaof(c *Client, r *Resp, state *AppState) *Resp {
 		DB.mu.RLock()
 		defer DB.mu.RUnlock()
 		cp := make(map[string]*Item, len(DB.store))
-		maps.Copy(cp, DB.store)
+		for k, v := range DB.store {
+			cp[k] = v
+		}
 
 		state.aof.Rewrite(cp)
 	}()
