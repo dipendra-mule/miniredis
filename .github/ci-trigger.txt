@@ -1,0 +1,5 @@
+Triggering CI after go.mod fix
+
+This file was added by GitHub Copilot to trigger a new workflow run after correcting the go.mod go directive.
+
+Reference: https://github.com/dipendra-mule/miniredis/actions/runs/38668685604/job/116206405582
